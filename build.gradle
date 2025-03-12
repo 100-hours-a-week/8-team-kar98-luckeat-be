@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.3'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '6.25.0' // auto code formatting
 }
 
 group = 'com.luckeat'
@@ -10,6 +11,15 @@ version = '0.0.1-SNAPSHOT'
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+spotless {
+    java {
+        target '**/*.java'
+        eclipse().configFile("naver-java-style.xml") // 네이버 스타일 적용
+        removeUnusedImports() // 불필요한 import 삭제
+        importOrder("java", "javax", "org", "com") // import 정렬
     }
 }
 
