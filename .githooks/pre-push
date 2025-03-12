@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "🚀 Running pre-push hook..."
+./gradlew clean build

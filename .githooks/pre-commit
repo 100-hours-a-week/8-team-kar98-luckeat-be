@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit hook..."
+./gradlew spotlessApply clean build
