@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [1.1.0](https://github.com/100-hours-a-week/8-team-kar98-luckeat-be/compare/v1.0.0...v1.1.0) (2025-03-13)
+
+### 🚀 NEW FEATURES
+
+* semantic-release test ([7ec43ee](https://github.com/100-hours-a-week/8-team-kar98-luckeat-be/commit/7ec43eeb646bbdc7b3f4defdfc981ebf1a6bd53a))
+* semantic-release test ([ebd3708](https://github.com/100-hours-a-week/8-team-kar98-luckeat-be/commit/ebd3708f53b633b073addaf0546293a796d396ba))
+* semantic-release test ([103c1ac](https://github.com/100-hours-a-week/8-team-kar98-luckeat-be/commit/103c1ac0a4e3cd6a267a8a14048f63c09c1abe29))
+
 ## 1.0.0 (2025-03-13)
 
 ### 🚀 NEW FEATURES
