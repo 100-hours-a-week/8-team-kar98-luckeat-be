@@ -24,15 +24,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org/'  # 일반적인 NPM 레지스트리 사용
+          registry-url: 'https://registry.npmjs.org/'
 
-      - name: Check Node.js and npm version  # 버전 확인 추가
+      - name: Check Node.js and npm version  # 버전 확인
         run: |
           node -v
           npm -v
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps --force  # 강제 설치 옵션 추가
+      - name: Clean npm cache  # npm 캐시 삭제
+        run: npm cache clean --force
+
+      - name: Remove existing dependencies  # 기존 패키지 삭제
+        run: rm -rf node_modules package-lock.json
+
+      - name: Install dependencies  # 패키지 재설치
+        run: npm install --legacy-peer-deps --force
 
       - name: Run Semantic Release
         run: npx semantic-release
