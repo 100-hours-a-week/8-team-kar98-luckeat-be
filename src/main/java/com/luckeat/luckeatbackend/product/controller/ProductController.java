@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.product.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -19,39 +20,49 @@ import com.luckeat.luckeatbackend.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/v1/stores/{store_id}/products")
 @RequiredArgsConstructor
 public class ProductController {
 
 	private final ProductService productService;
 
 	@GetMapping
-	public ResponseEntity<List<Product>> getAllProducts() {
-		return ResponseEntity.ok(productService.getAllProducts());
+	public ResponseEntity<List<Product>> getAllProducts(@PathVariable Long storeId) {
+		return ResponseEntity.ok(productService.getAllProducts(storeId));
 	}
 
-	@GetMapping("/{id}")
-	public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-		return productService.getProductById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	@GetMapping("/{product_id}")
+	public ResponseEntity<Product> getProductById(@PathVariable Long storeId, @PathVariable Long productId) {
+		return productService.getProductById(storeId, productId).map(ResponseEntity::ok)
+				.orElse(ResponseEntity.notFound().build());
 	}
 
 	@PostMapping
-	public ResponseEntity<Product> createProduct(@RequestBody Product product) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(productService.saveProduct(product));
+	public ResponseEntity<Product> createProduct(@PathVariable Long storeId, @RequestBody Product product) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(productService.saveProduct(storeId, product));
 	}
 
-	@PutMapping("/{id}")
-	public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
-		return productService.getProductById(id).map(existingProduct -> {
-			product.setId(id);
-			return ResponseEntity.ok(productService.saveProduct(product));
+	@PutMapping("/{product_id}")
+	public ResponseEntity<Product> updateProduct(@PathVariable Long storeId, @PathVariable Long productId,
+			@RequestBody Product product) {
+		return productService.getProductById(storeId, productId).map(existingProduct -> {
+			product.setId(productId);
+			return ResponseEntity.ok(productService.saveProduct(storeId, product));
 		}).orElse(ResponseEntity.notFound().build());
 	}
 
-	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-		return productService.getProductById(id).map(product -> {
-			productService.deleteProduct(id);
+	@PutMapping("/{product_id}/status")
+	public ResponseEntity<Product> updateProductStatus(@PathVariable Long storeId, @PathVariable Long productId,
+			@RequestBody boolean isOpen) {
+		return productService.updateProductStatus(productId, isOpen).map(ResponseEntity::ok)
+				.orElse(ResponseEntity.notFound().build());
+	}
+
+	@DeleteMapping("/{product_id}")
+	public ResponseEntity<Void> deleteProduct(@PathVariable Long storeId, @PathVariable Long productId) {
+		return productService.getProductById(storeId, productId).map(product -> {
+			product.setDeletedAt(LocalDateTime.now());
+			productService.saveProduct(storeId, product);
 			return ResponseEntity.noContent().<Void>build();
 		}).orElse(ResponseEntity.notFound().build());
 	}
