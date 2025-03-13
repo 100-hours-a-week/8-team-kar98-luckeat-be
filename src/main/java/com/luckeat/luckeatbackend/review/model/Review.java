@@ -1,9 +1,6 @@
 package com.luckeat.luckeatbackend.review.model;
 
-import java.time.LocalDateTime;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import com.luckeat.luckeatbackend.common.entity.BaseEntity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,11 +9,7 @@ import lombok.*;
 @Table(name = "review")
 @Data
 @NoArgsConstructor
-public class Review {
-
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+public class Review extends BaseEntity {
 
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
@@ -36,14 +29,4 @@ public class Review {
 	@Column(name = "is_delete", nullable = false)
 	private Boolean isDelete = false;
 
-	@Column(name = "created_at", nullable = false, updatable = false)
-	@CreationTimestamp
-	private LocalDateTime createdAt;
-
-	@Column(name = "updated_at")
-	@UpdateTimestamp
-	private LocalDateTime updatedAt;
-
-	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
 }
