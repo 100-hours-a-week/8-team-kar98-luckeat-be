@@ -99,7 +99,7 @@ out/
 
 
 ### etc
-src/main/resources/application.yml
+/src/main/resources/application.yml
 
 # Node.js
 node_modules/

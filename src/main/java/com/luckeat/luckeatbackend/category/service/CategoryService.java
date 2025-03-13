@@ -31,9 +31,4 @@ public class CategoryService {
 		return categoryRepository.save(category);
 	}
 
-	@Transactional
-	public void deleteCategory(Long id) {
-		// categoryRepository.deleteById(id);
-		// TODO: soft delete category
-	}
 }
