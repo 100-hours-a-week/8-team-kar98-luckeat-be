@@ -32,7 +32,8 @@ public class StoreService {
 	}
 
 	@Transactional
-	public void deleteStore(Long id) {
-		storeRepository.deleteById(id);
+	public void deleteStore(Long storeId) {
+		// TODO: 소프트 삭제로 바꾸기
+		storeRepository.deleteById(storeId);
 	}
 }
