@@ -1,3 +1,16 @@
 spring:
   application:
     name: luckeat
+  datasource:
+    url: jdbc:mysql://luckeat1.cna6sa6wca3e.ap-northeast-2.rds.amazonaws.com:13306/dev?useSSL=true&serverTimezone=UTC
+    username: admin
+    password: rozfum-fixsug-cuvBo5
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect

@@ -22,51 +22,45 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
-    
-    private final UserService userService;
-    
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
-    }
-    
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-    
-    @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody User user) {
-        if (userService.existsByEmail(user.getEmail())) {
-            return ResponseEntity.badRequest().body("Email already in use");
-        }
-        
-        if (userService.existsByUsername(user.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already in use");
-        }
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
-    }
-    
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user) {
-        return userService.getUserById(id)
-                .map(existingUser -> {
-                    user.setId(id);
-                    return ResponseEntity.ok(userService.updateUser(user));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-    
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .map(user -> {
-                    userService.deleteUser(id);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
+
+	private final UserService userService;
+
+	@GetMapping
+	public ResponseEntity<List<User>> getAllUsers() {
+		return ResponseEntity.ok(userService.getAllUsers());
+	}
+
+	@GetMapping("/{id}")
+	public ResponseEntity<User> getUserById(@PathVariable Long id) {
+		return userService.getUserById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	}
+
+	@PostMapping
+	public ResponseEntity<?> createUser(@RequestBody User user) {
+		if (userService.existsByEmail(user.getEmail())) {
+			return ResponseEntity.badRequest().body("Email already in use");
+		}
+
+		if (userService.existsByUsername(user.getUsername())) {
+			return ResponseEntity.badRequest().body("Username already in use");
+		}
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
+	}
+
+	@PutMapping("/{id}")
+	public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user) {
+		return userService.getUserById(id).map(existingUser -> {
+			user.setId(id);
+			return ResponseEntity.ok(userService.updateUser(user));
+		}).orElse(ResponseEntity.notFound().build());
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+		return userService.getUserById(id).map(user -> {
+			userService.deleteUser(id);
+			return ResponseEntity.noContent().<Void>build();
+		}).orElse(ResponseEntity.notFound().build());
+	}
 }

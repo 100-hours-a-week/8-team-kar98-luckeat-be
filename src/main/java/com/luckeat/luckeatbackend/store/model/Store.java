@@ -19,13 +19,13 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Store {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    private String name;
-    private String address;
-    private String phoneNumber;
-    private String description;
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	private String name;
+	private String address;
+	private String phoneNumber;
+	private String description;
 }

@@ -18,33 +18,33 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewService {
-    
-    private final ReviewRepository reviewRepository;
-    
-    public List<Review> getAllReviews() {
-        return reviewRepository.findAll();
-    }
-    
-    public Optional<Review> getReviewById(Long id) {
-        return reviewRepository.findById(id);
-    }
-    
-    public List<Review> getReviewsByUser(User user) {
-        return reviewRepository.findByUser(user);
-    }
-    
-    public List<Review> getReviewsByProduct(Product product) {
-        return reviewRepository.findByProduct(product);
-    }
-    
-    @Transactional
-    public Review createReview(Review review) {
-        review.setCreatedAt(LocalDateTime.now());
-        return reviewRepository.save(review);
-    }
-    
-    @Transactional
-    public void deleteReview(Long id) {
-        reviewRepository.deleteById(id);
-    }
+
+	private final ReviewRepository reviewRepository;
+
+	public List<Review> getAllReviews() {
+		return reviewRepository.findAll();
+	}
+
+	public Optional<Review> getReviewById(Long id) {
+		return reviewRepository.findById(id);
+	}
+
+	public List<Review> getReviewsByUser(User user) {
+		return reviewRepository.findByUser(user);
+	}
+
+	public List<Review> getReviewsByProduct(Product product) {
+		return reviewRepository.findByProduct(product);
+	}
+
+	@Transactional
+	public Review createReview(Review review) {
+		review.setCreatedAt(LocalDateTime.now());
+		return reviewRepository.save(review);
+	}
+
+	@Transactional
+	public void deleteReview(Long id) {
+		reviewRepository.deleteById(id);
+	}
 }

@@ -1,4 +1,4 @@
-package com.luckeat.luckeatbackend.review_permission.model;
+package com.luckeat.luckeatbackend.permission.model;
 
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.users.model.User;
@@ -23,19 +23,19 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Permission {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
-    
-    @ManyToOne
-    @JoinColumn(name = "product_id")
-    private Product product;
-    
-    private boolean canReview;
+public class ReviewPermission {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	@ManyToOne
+	@JoinColumn(name = "user_id")
+	private User user;
+
+	@ManyToOne
+	@JoinColumn(name = "product_id")
+	private Product product;
+
+	private boolean canReview;
 }
