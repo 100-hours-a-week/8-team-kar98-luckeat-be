@@ -19,7 +19,7 @@ import com.luckeat.luckeatbackend.store.service.StoreService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/stores")
+@RequestMapping("/api/v1/stores")
 @RequiredArgsConstructor
 public class StoreController {
 
@@ -30,9 +30,9 @@ public class StoreController {
 		return ResponseEntity.ok(storeService.getAllStores());
 	}
 
-	@GetMapping("/{id}")
-	public ResponseEntity<Store> getStoreById(@PathVariable Long id) {
-		return storeService.getStoreById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	@GetMapping("/{store_id}")
+	public ResponseEntity<Store> getStoreById(@PathVariable Long storeId) {
+		return storeService.getStoreById(storeId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
 	}
 
 	@PostMapping
@@ -40,19 +40,21 @@ public class StoreController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.saveStore(store));
 	}
 
-	@PutMapping("/{id}")
-	public ResponseEntity<Store> updateStore(@PathVariable Long id, @RequestBody Store store) {
-		return storeService.getStoreById(id).map(existingStore -> {
-			store.setId(id);
+	@PutMapping("/{store_id}")
+	public ResponseEntity<Store> updateStore(@PathVariable Long storeId, @RequestBody Store store) {
+		return storeService.getStoreById(storeId).map(existingStore -> {
+			store.setId(storeId);
 			return ResponseEntity.ok(storeService.saveStore(store));
 		}).orElse(ResponseEntity.notFound().build());
 	}
 
-	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteStore(@PathVariable Long id) {
-		return storeService.getStoreById(id).map(store -> {
-			storeService.deleteStore(id);
+	@DeleteMapping("/{store_id}")
+	public ResponseEntity<Void> deleteStore(@PathVariable Long storeId) {
+		// TODO: 소프트 삭제로 바꾸기
+		return storeService.getStoreById(storeId).map(store -> {
+			storeService.deleteStore(storeId);
 			return ResponseEntity.noContent().<Void>build();
 		}).orElse(ResponseEntity.notFound().build());
+
 	}
 }
