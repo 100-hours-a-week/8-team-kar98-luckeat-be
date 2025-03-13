@@ -2,9 +2,9 @@ name: 🛠 Checkstyle Validation
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, develop ]
 
 jobs:
   checkstyle:
