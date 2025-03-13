@@ -41,6 +41,7 @@ public class Store extends BaseEntity {
 	private String storeUrl;
 
 	@Column(name = "share_count", nullable = false)
+	@Builder.Default
 	private Long shareCount = 0L;
 
 	@Column(name = "permission_url", length = 255)

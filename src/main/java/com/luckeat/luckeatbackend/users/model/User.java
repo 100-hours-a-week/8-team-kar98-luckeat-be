@@ -34,7 +34,7 @@ public class User extends BaseEntity {
 
 	@Column(nullable = false, unique = true, length = 50)
 	private String nickname; // 회원 닉네임 (UNIQUE)
-	
+
 	public enum Role {
 		BUYER, SELLER, ADMIN
 	}

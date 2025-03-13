@@ -34,11 +34,10 @@ public class UserService {
 		return userRepository.findByNickname(nickname);
 	}
 
-    @Transactional
-    public User createUser(User user) {
-        return userRepository.save(user);
-    }
-
+	@Transactional
+	public User createUser(User user) {
+		return userRepository.save(user);
+	}
 
 	@Transactional
 	public User updateUser(User user) {

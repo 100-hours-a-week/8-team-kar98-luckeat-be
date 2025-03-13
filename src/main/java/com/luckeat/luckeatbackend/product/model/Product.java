@@ -39,6 +39,7 @@ public class Product extends BaseEntity {
 	private Long discountedPrice;
 
 	@Column(name = "is_open", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE COMMENT '상품 판매 여부 (공개 여부)'")
-	private Boolean isOpen;
+	@Builder.Default
+	private Boolean isOpen = false;
 
 }
