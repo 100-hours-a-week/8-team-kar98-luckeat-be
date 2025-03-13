@@ -7,8 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.luckeat.luckeatbackend.permission.model.ReviewPermission;
 import com.luckeat.luckeatbackend.permission.repository.ReviewPermissionRepository;
-import com.luckeat.luckeatbackend.product.model.Product;
-import com.luckeat.luckeatbackend.users.model.User;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,42 +17,32 @@ public class ReviewPermissionService {
 
 	private final ReviewPermissionRepository permissionRepository;
 
-	public Optional<ReviewPermission> getPermission(User user, Product product) {
-		return permissionRepository.findByUserAndProduct(user, product);
+	public Optional<ReviewPermission> getPermission(Long userId, Long storeId) {
+		return permissionRepository.findByUserIdAndStoreId(userId, storeId);
 	}
 
-	public boolean canUserReview(User user, Product product) {
-		return permissionRepository.findByUserAndProduct(user, product).map(ReviewPermission::isCanReview)
-				.orElse(false);
+	public boolean hasPermission(Long userId, Long storeId) {
+		return permissionRepository.findByUserIdAndStoreId(userId, storeId).isPresent();
 	}
 
 	@Transactional
-	public ReviewPermission grantPermission(User user, Product product) {
-		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserAndProduct(user, product);
+	public ReviewPermission grantPermission(Long userId, Long storeId) {
+		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserIdAndStoreId(userId, storeId);
 
 		if (existingPermission.isPresent()) {
-			ReviewPermission permission = existingPermission.get();
-			permission.setCanReview(true);
-			return permissionRepository.save(permission);
+			return existingPermission.get();
 		} else {
-			ReviewPermission permission = ReviewPermission.builder().user(user).product(product).canReview(true)
+			ReviewPermission permission = ReviewPermission.builder()
+					.userId(userId)
+					.storeId(storeId)
 					.build();
 			return permissionRepository.save(permission);
 		}
 	}
 
 	@Transactional
-	public ReviewPermission revokePermission(User user, Product product) {
-		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserAndProduct(user, product);
-
-		if (existingPermission.isPresent()) {
-			ReviewPermission permission = existingPermission.get();
-			permission.setCanReview(false);
-			return permissionRepository.save(permission);
-		} else {
-			ReviewPermission permission = ReviewPermission.builder().user(user).product(product).canReview(false)
-					.build();
-			return permissionRepository.save(permission);
-		}
+	public void revokePermission(Long userId, Long storeId) {
+		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserIdAndStoreId(userId, storeId);
+		existingPermission.ifPresent(permissionRepository::delete);
 	}
 }

@@ -5,41 +5,48 @@ import java.time.LocalDateTime;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.users.model.User;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import jakarta.persistence.metamodel.IdentifiableType;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "reviews")
-@Getter
-@Setter
+@Table(name = "review")
+@Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Review {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private String content;
+	@Column(name = "user_id", nullable = false)
+	private Long userId;
+
+	@Column(name = "store_id", nullable = false)
+	private Long storeId;
+
+	@Column(name = "rating", nullable = false)
 	private Integer rating;
+
+	@Column(name = "review_content", nullable = false, columnDefinition = "TEXT")
+	private String reviewContent;
+
+	@Column(name = "review_image", columnDefinition = "TEXT")
+	private String reviewImage;
+
+	@Column(name = "is_delete", nullable = false)
+	private Boolean isDelete = false;
+
+	@Column(name = "created_at", nullable = false, updatable = false)
+	@CreationTimestamp
 	private LocalDateTime createdAt;
 
-	@ManyToOne
-	@JoinColumn(name = "user_id")
-	private User user;
+	@Column(name = "updated_at")
+	@UpdateTimestamp
+	private LocalDateTime updatedAt;
 
-	@ManyToOne
-	@JoinColumn(name = "product_id")
-	private Product product;
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
 }
