@@ -24,12 +24,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://npm.pkg.github.com/'
+          registry-url: 'https://registry.npmjs.org/'  # 일반적인 NPM 레지스트리 사용
+
+      - name: Check Node.js and npm version  # 버전 확인 추가
+        run: |
+          node -v
+          npm -v
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps --force  # 강제 설치 옵션 추가
 
       - name: Run Semantic Release
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
