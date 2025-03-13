@@ -1,0 +1,47 @@
+name: Backend Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  semantic-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Check Node.js and npm version  # 버전 확인
+        run: |
+          node -v
+          npm -v
+
+      - name: Clean npm cache  # npm 캐시 삭제
+        run: npm cache clean --force
+
+      - name: Remove existing dependencies  # 기존 패키지 삭제
+        run: rm -rf node_modules package-lock.json
+
+      - name: Install dependencies  # 패키지 재설치
+        run: npm install --legacy-peer-deps --force
+
+      - name: Run Semantic Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
