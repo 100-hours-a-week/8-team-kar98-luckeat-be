@@ -5,27 +5,33 @@ on:
     branches:
       - main
       - develop
-  workflow_dispatch:  # GitHub Actions에서 수동 실행 가능하도록 추가
+  workflow_dispatch:
 
 jobs:
   semantic-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # GitHub Actions에 태그 푸시 권한 부여
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Semantic Release가 전체 Git 기록을 확인할 수 있도록 설정
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # Node.js 버전 지정
+          node-version: 18
           registry-url: 'https://npm.pkg.github.com/'
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps  # peerDependencies 문제 방지
+      - name: Clean npm cache
+        run: rm -rf node_modules package-lock.json && npm cache clean --force
+
+      - name: Install dependencies with legacy peer deps
+        run: npm install --legacy-peer-deps
+
+      - name: Install human-signals manually
+        run: npm install human-signals
 
       - name: Run Semantic Release
         run: npx semantic-release
