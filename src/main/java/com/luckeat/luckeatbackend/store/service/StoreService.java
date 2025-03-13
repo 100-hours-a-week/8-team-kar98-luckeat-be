@@ -15,24 +15,24 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StoreService {
-    
-    private final StoreRepository storeRepository;
-    
-    public List<Store> getAllStores() {
-        return storeRepository.findAll();
-    }
-    
-    public Optional<Store> getStoreById(Long id) {
-        return storeRepository.findById(id);
-    }
-    
-    @Transactional
-    public Store saveStore(Store store) {
-        return storeRepository.save(store);
-    }
-    
-    @Transactional
-    public void deleteStore(Long id) {
-        storeRepository.deleteById(id);
-    }
+
+	private final StoreRepository storeRepository;
+
+	public List<Store> getAllStores() {
+		return storeRepository.findAll();
+	}
+
+	public Optional<Store> getStoreById(Long id) {
+		return storeRepository.findById(id);
+	}
+
+	@Transactional
+	public Store saveStore(Store store) {
+		return storeRepository.save(store);
+	}
+
+	@Transactional
+	public void deleteStore(Long id) {
+		storeRepository.deleteById(id);
+	}
 }

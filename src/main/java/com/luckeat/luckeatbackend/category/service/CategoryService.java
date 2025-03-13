@@ -15,24 +15,25 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CategoryService {
-    
-    private final CategoryRepository categoryRepository;
-    
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
-    }
-    
-    public Optional<Category> getCategoryById(Long id) {
-        return categoryRepository.findById(id);
-    }
-    
-    @Transactional
-    public Category saveCategory(Category category) {
-        return categoryRepository.save(category);
-    }
-    
-    @Transactional
-    public void deleteCategory(Long id) {
-        categoryRepository.deleteById(id);
-    }
+
+	private final CategoryRepository categoryRepository;
+
+	public List<Category> getAllCategories() {
+		return categoryRepository.findAll();
+	}
+
+	public Optional<Category> getCategoryById(Long id) {
+		return categoryRepository.findById(id);
+	}
+
+	@Transactional
+	public Category saveCategory(Category category) {
+		return categoryRepository.save(category);
+	}
+
+	@Transactional
+	public void deleteCategory(Long id) {
+		// categoryRepository.deleteById(id);
+		// TODO: soft delete category
+	}
 }

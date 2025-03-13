@@ -15,24 +15,24 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProductService {
-    
-    private final ProductRepository productRepository;
-    
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
-    }
-    
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
-    }
-    
-    @Transactional
-    public Product saveProduct(Product product) {
-        return productRepository.save(product);
-    }
-    
-    @Transactional
-    public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
-    }
+
+	private final ProductRepository productRepository;
+
+	public List<Product> getAllProducts() {
+		return productRepository.findAll();
+	}
+
+	public Optional<Product> getProductById(Long id) {
+		return productRepository.findById(id);
+	}
+
+	@Transactional
+	public Product saveProduct(Product product) {
+		return productRepository.save(product);
+	}
+
+	@Transactional
+	public void deleteProduct(Long id) {
+		productRepository.deleteById(id);
+	}
 }

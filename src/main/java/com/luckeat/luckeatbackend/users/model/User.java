@@ -21,14 +21,14 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class User {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    private String username;
-    private String email;
-    private String password;
-    private String phoneNumber;
-    private LocalDateTime createdAt;
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	private String username;
+	private String email;
+	private String password;
+	private String phoneNumber;
+	private LocalDateTime createdAt;
 }

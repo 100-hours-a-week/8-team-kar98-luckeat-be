@@ -11,6 +11,7 @@ import com.luckeat.luckeatbackend.users.model.User;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-    List<Review> findByUser(User user);
-    List<Review> findByProduct(Product product);
+	List<Review> findByUser(User user);
+
+	List<Review> findByProduct(Product product);
 }
