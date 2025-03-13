@@ -9,5 +9,6 @@ import com.luckeat.luckeatbackend.permission.model.ReviewPermission;
 
 @Repository
 public interface ReviewPermissionRepository extends JpaRepository<ReviewPermission, Long> {
+
 	Optional<ReviewPermission> findByUserIdAndStoreId(Long userId, Long storeId);
 }

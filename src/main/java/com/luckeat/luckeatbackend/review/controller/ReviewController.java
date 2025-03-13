@@ -51,49 +51,36 @@ public class ReviewController {
 
 	@PostMapping
 	public ResponseEntity<?> createReview(@RequestBody Review review) {
-		return userService.getUserById(review.getUser().getId())
-				.flatMap(user -> productService.getProductById(review.getProduct().getId()).map(product -> {
-					if (permissionService.canUserReview(user, product)) {
-						review.setUser(user);
-						review.setProduct(product);
-						return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(review));
-					} else {
-						return ResponseEntity.status(HttpStatus.FORBIDDEN)
-								.body("User does not have permission to review this product");
-					}
-				})).orElse(ResponseEntity.notFound().build());
+		Long userId = review.getUserId();
+		Long storeId = review.getStoreId();
+
+		if (permissionService.hasPermission(userId, storeId)) {
+			return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(review));
+		} else {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body("사용자는 이 상품에 대한 리뷰 권한이 없습니다");
+		}
 	}
 
 	@PatchMapping("/{review_id}")
-	public ResponseEntity<?> updateReview(@RequestBody Review review) {
-		return userService.getUserById(review.getUser().getId())
-				.flatMap(user -> productService.getProductById(review.getProduct().getId()).map(product -> {
-					if (permissionService.canUserReview(user, product)) {
-						review.setUser(user);
-						review.setProduct(product);
-						return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(review));
-					} else {
-						return ResponseEntity.status(HttpStatus.FORBIDDEN)
-								.body("User does not have permission to review this product");
-					}
-				})).orElse(ResponseEntity.notFound().build());
-	}
+	public ResponseEntity<?> updateReview(@PathVariable Long id, @RequestBody Review review) {
+		return reviewService.getReviewById(id).map(existingReview -> {
+			Long userId = review.getUserId();
+			Long storeId = review.getStoreId();
 
-	// TODO: 리뷰 수정 구현
-	@PatchMapping
-	public ResponseEntity<?> updateReview(@RequestBody Review review) {
-		return userService.getUserById(review.getUser().getId())
-				.flatMap(user -> productService.getProductById(review.getProduct().getId()).map(product -> {
-					if (permissionService.canUserReview(user, product)) {
-						review.setUser(user);
-						review.setProduct(product);
-						// 기존 리뷰 업데이트: reviewService.updateReview(review) 메서드를 호출
-						return ResponseEntity.ok(reviewService.updateReview(review));
-					} else {
-						return ResponseEntity.status(HttpStatus.FORBIDDEN)
-								.body("User does not have permission to review this product");
-					}
-				})).orElse(ResponseEntity.notFound().build());
+			if (permissionService.hasPermission(userId, storeId)) {
+				// 기존 리뷰 업데이트
+				existingReview.setRating(review.getRating());
+				existingReview.setReviewContent(review.getReviewContent());
+				if (review.getReviewImage() != null) {
+					existingReview.setReviewImage(review.getReviewImage());
+				}
+
+				Review updatedReview = reviewService.createReview(existingReview);
+				return ResponseEntity.ok(updatedReview);
+			} else {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body("사용자는 이 리뷰를 수정할 권한이 없습니다");
+			}
+		}).orElse(ResponseEntity.notFound().build());
 	}
 
 	@DeleteMapping("/{review_id}")

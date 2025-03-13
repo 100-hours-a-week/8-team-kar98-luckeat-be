@@ -2,14 +2,11 @@ package com.luckeat.luckeatbackend.review.model;
 
 import java.time.LocalDateTime;
 
-import com.luckeat.luckeatbackend.product.model.Product;
-import com.luckeat.luckeatbackend.users.model.User;
-
-import jakarta.persistence.*;
-import jakarta.persistence.metamodel.IdentifiableType;
-import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "review")
