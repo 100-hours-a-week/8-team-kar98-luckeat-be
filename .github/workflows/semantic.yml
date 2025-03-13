@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies with legacy peer deps
         run: npm install --legacy-peer-deps
 
-      - name: Install human-signals manually
-        run: npm install human-signals
+      - name: Install missing dependency
+        run: npm install --save-dev conventional-changelog-conventionalcommits
 
       - name: Run Semantic Release
         run: npx semantic-release
