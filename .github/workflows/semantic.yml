@@ -5,13 +5,13 @@ on:
     branches:
       - main
       - develop
-  workflow_dispatch: # 수동 실행 가능하도록 설정
+  workflow_dispatch:  # 수동 실행 가능하도록 설정
 
 jobs:
   semantic-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # GitHub Actions에서 태그 푸시 권한 부여
+      contents: write
       issues: write
       pull-requests: write
 
@@ -19,13 +19,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 전체 Git 기록을 확인할 수 있도록 설정
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # 적절한 Node.js 버전 사용
-          registry-url: 'https://registry.npmjs.org/'
+          node-version: 18
 
       - name: Install dependencies
         run: |
@@ -34,11 +33,9 @@ jobs:
           @semantic-release/commit-analyzer \
           @semantic-release/git \
           @semantic-release/github \
-          @semantic-release/npm \
           @semantic-release/release-notes-generator
 
       - name: Run Semantic Release
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
