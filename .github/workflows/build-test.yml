@@ -2,9 +2,9 @@ name: 🚀 Build & Test
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, develop ]
   workflow_dispatch:  # 수동 실행 가능
 
 jobs:
