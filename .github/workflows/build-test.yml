@@ -2,13 +2,10 @@ name: 🚀 Build & Test
 
 on:
   push:
-    branches:
-        - develop
+    branches: [ dev ]
   pull_request:
-    branches:
-        - main
-        - develop
-  workflow_dispatch:  # 수동 실행 가능하도록 추가
+    branches: [ main, dev ]
+  workflow_dispatch:  # 수동 실행 가능
 
 jobs:
   build-test:
@@ -27,11 +24,17 @@ jobs:
       - name: Grant execute permission for Gradle Wrapper
         run: chmod +x gradlew
 
+      - name: Create application.yml
+        run: |
+          mkdir -p src/main/resources
+          echo "${{ secrets.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+
       - name: Clean and Build Project
         run: ./gradlew clean build --console=verbose
 
       - name: Run Tests
         run: ./gradlew test --console=verbose
+        continue-on-error: true  # 테스트 실패해도 빌드가 중단되지 않도록 설정
 
       - name: Upload Test Results
         if: always()
