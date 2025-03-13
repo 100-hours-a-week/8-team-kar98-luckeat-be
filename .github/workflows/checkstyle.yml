@@ -24,7 +24,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Checkstyle Validation
-        run: ./gradlew checkstyleMain checkstyleTest checkstyleTestFixture --console=verbose
+        run: ./gradlew checkstyleMain checkstyleTest --console=verbose
 
       - name: Upload Checkstyle Report
         if: always()
