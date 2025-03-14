@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.permission;
 
-import com.luckeat.luckeatbackend.common.exception.ForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.base.ForbiddenException;
 
 public class PermissionForbiddenException extends ForbiddenException {
 	public PermissionForbiddenException() {

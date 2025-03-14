@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.user;
 
-import com.luckeat.luckeatbackend.common.exception.ConflictException;
+import com.luckeat.luckeatbackend.common.exception.base.ConflictException;
 
 public class EmailDuplicateException extends ConflictException {
 	public EmailDuplicateException() {

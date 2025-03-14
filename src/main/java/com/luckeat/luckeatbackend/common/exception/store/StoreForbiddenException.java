@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.store;
 
-import com.luckeat.luckeatbackend.common.exception.ForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.base.ForbiddenException;
 
 public class StoreForbiddenException extends ForbiddenException {
 	public StoreForbiddenException() {

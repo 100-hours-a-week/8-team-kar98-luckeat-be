@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.review;
 
-import com.luckeat.luckeatbackend.common.exception.ForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.base.ForbiddenException;
 
 public class ReviewForbiddenException extends ForbiddenException {
 	public ReviewForbiddenException() {

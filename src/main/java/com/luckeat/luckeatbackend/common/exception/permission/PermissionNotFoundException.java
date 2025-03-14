@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.permission;
 
-import com.luckeat.luckeatbackend.common.exception.NotFoundException;
+import com.luckeat.luckeatbackend.common.exception.base.NotFoundException;
 
 public class PermissionNotFoundException extends NotFoundException {
 	public PermissionNotFoundException() {

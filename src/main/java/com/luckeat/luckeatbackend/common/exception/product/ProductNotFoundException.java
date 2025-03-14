@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.product;
 
-import com.luckeat.luckeatbackend.common.exception.NotFoundException;
+import com.luckeat.luckeatbackend.common.exception.base.NotFoundException;
 
 public class ProductNotFoundException extends NotFoundException {
 	public ProductNotFoundException() {

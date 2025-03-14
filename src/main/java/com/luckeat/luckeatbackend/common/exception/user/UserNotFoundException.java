@@ -1,6 +1,6 @@
 package com.luckeat.luckeatbackend.common.exception.user;
 
-import com.luckeat.luckeatbackend.common.exception.NotFoundException;
+import com.luckeat.luckeatbackend.common.exception.base.NotFoundException;
 
 public class UserNotFoundException extends NotFoundException {
 	public UserNotFoundException() {
