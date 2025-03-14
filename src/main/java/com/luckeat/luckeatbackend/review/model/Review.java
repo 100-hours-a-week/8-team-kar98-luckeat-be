@@ -1,45 +1,32 @@
 package com.luckeat.luckeatbackend.review.model;
 
-import java.time.LocalDateTime;
+import com.luckeat.luckeatbackend.common.entity.BaseEntity;
 
-import com.luckeat.luckeatbackend.product.model.Product;
-import com.luckeat.luckeatbackend.users.model.User;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
-@Table(name = "reviews")
-@Getter
-@Setter
+@Table(name = "review")
+@Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Review {
+public class Review extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@Column(name = "user_id", nullable = false)
+	private Long userId;
 
-	private String content;
+	@Column(name = "store_id", nullable = false)
+	private Long storeId;
+
+	@Column(name = "rating", nullable = false)
 	private Integer rating;
-	private LocalDateTime createdAt;
 
-	@ManyToOne
-	@JoinColumn(name = "user_id")
-	private User user;
+	@Column(name = "review_content", nullable = false, columnDefinition = "TEXT")
+	private String reviewContent;
 
-	@ManyToOne
-	@JoinColumn(name = "product_id")
-	private Product product;
+	@Column(name = "review_image", columnDefinition = "TEXT")
+	private String reviewImage;
+
+	@Column(name = "is_delete", nullable = false)
+	private Boolean isDelete = false;
+
 }

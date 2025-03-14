@@ -1,9 +1,11 @@
 package com.luckeat.luckeatbackend.store.model;
 
+import java.time.LocalTime;
+
+import com.luckeat.luckeatbackend.common.entity.BaseEntity;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,14 +20,52 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Store {
+public class Store extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@Column(name = "user_id", nullable = false)
+	private Long userId;
 
-	private String name;
+	@Column(name = "category_id", nullable = false)
+	private Long categoryId;
+
+	@Column(name = "store_name", nullable = false, length = 255)
+	private String storeName;
+
+	@Column(name = "store_img", nullable = false, columnDefinition = "TEXT")
+	private String storeImg;
+
+	@Column(name = "address", nullable = false, length = 255)
 	private String address;
-	private String phoneNumber;
+
+	@Column(name = "store_url", length = 255)
+	private String storeUrl;
+
+	@Column(name = "share_count", nullable = false)
+	@Builder.Default
+	private Long shareCount = 0L;
+
+	@Column(name = "permission_url", length = 255)
+	private String permissionUrl;
+
+	@Column(name = "latitude", nullable = false)
+	private Double latitude;
+
+	@Column(name = "longitude", nullable = false)
+	private Double longitude;
+
+	@Column(name = "contact_number", length = 255)
+	private String contactNumber;
+
+	@Column(name = "description", columnDefinition = "TEXT")
 	private String description;
+
+	@Column(name = "business_number", length = 255)
+	private String businessNumber;
+
+	@Column(name = "weekday_close_time")
+	private LocalTime weekdayCloseTime;
+
+	@Column(name = "weekend_close_time")
+	private LocalTime weekendCloseTime;
+
 }

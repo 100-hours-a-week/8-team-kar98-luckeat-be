@@ -1,14 +1,16 @@
 package com.luckeat.luckeatbackend.permission.service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luckeat.luckeatbackend.permission.dto.PermissionRequestDto;
+import com.luckeat.luckeatbackend.permission.dto.PermissionResponseDto;
 import com.luckeat.luckeatbackend.permission.model.ReviewPermission;
 import com.luckeat.luckeatbackend.permission.repository.ReviewPermissionRepository;
-import com.luckeat.luckeatbackend.product.model.Product;
-import com.luckeat.luckeatbackend.users.model.User;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,42 +21,54 @@ public class ReviewPermissionService {
 
 	private final ReviewPermissionRepository permissionRepository;
 
-	public Optional<ReviewPermission> getPermission(User user, Product product) {
-		return permissionRepository.findByUserAndProduct(user, product);
+	public List<PermissionResponseDto> getAllPermissions() {
+		return permissionRepository.findAll().stream().map(PermissionResponseDto::fromEntity)
+				.collect(Collectors.toList());
 	}
 
-	public boolean canUserReview(User user, Product product) {
-		return permissionRepository.findByUserAndProduct(user, product).map(ReviewPermission::isCanReview)
-				.orElse(false);
+	public Optional<PermissionResponseDto> getPermissionById(Long id) {
+		return permissionRepository.findById(id).map(PermissionResponseDto::fromEntity);
+	}
+
+	public Optional<ReviewPermission> getPermission(Long userId, Long storeId) {
+		return permissionRepository.findByUserIdAndStoreId(userId, storeId);
+	}
+
+	public boolean hasPermission(Long userId, Long storeId) {
+		return permissionRepository.findByUserIdAndStoreId(userId, storeId).isPresent();
 	}
 
 	@Transactional
-	public ReviewPermission grantPermission(User user, Product product) {
-		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserAndProduct(user, product);
+	public PermissionResponseDto createPermission(PermissionRequestDto requestDto) {
+		// 입력값 검증
+		if (requestDto.getUserId() == null) {
+			throw new IllegalArgumentException("사용자 ID는 필수입니다");
+		}
+
+		if (requestDto.getStoreId() == null) {
+			throw new IllegalArgumentException("스토어 ID는 필수입니다");
+		}
+
+		Optional<ReviewPermission> existingPermission = permissionRepository
+				.findByUserIdAndStoreId(requestDto.getUserId(), requestDto.getStoreId());
 
 		if (existingPermission.isPresent()) {
-			ReviewPermission permission = existingPermission.get();
-			permission.setCanReview(true);
-			return permissionRepository.save(permission);
+			return PermissionResponseDto.fromEntity(existingPermission.get());
 		} else {
-			ReviewPermission permission = ReviewPermission.builder().user(user).product(product).canReview(true)
-					.build();
-			return permissionRepository.save(permission);
+			ReviewPermission permission = ReviewPermission.builder().userId(requestDto.getUserId())
+					.storeId(requestDto.getStoreId()).build();
+			return PermissionResponseDto.fromEntity(permissionRepository.save(permission));
 		}
 	}
 
 	@Transactional
-	public ReviewPermission revokePermission(User user, Product product) {
-		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserAndProduct(user, product);
+	public void deletePermission(Long id) {
+		permissionRepository.deleteById(id);
+	}
 
-		if (existingPermission.isPresent()) {
-			ReviewPermission permission = existingPermission.get();
-			permission.setCanReview(false);
-			return permissionRepository.save(permission);
-		} else {
-			ReviewPermission permission = ReviewPermission.builder().user(user).product(product).canReview(false)
-					.build();
-			return permissionRepository.save(permission);
-		}
+	@Transactional
+	public void revokePermission(Long userId, Long storeId) {
+		Optional<ReviewPermission> existingPermission = permissionRepository.findByUserIdAndStoreId(userId, storeId);
+		existingPermission.ifPresent(permissionRepository::delete);
 	}
 }

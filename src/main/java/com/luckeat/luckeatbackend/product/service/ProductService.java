@@ -18,8 +18,16 @@ public class ProductService {
 
 	private final ProductRepository productRepository;
 
-	public List<Product> getAllProducts() {
-		return productRepository.findAll();
+	public List<Product> getAllProducts(Long storeId) {
+		return productRepository.findByStoreId(storeId);
+	}
+
+	public Optional<Product> getProductById(Long storeId, Long productId) {
+		return productRepository.findById(productId);
+	}
+
+	public List<Product> getOpenProductsByStoreId(Long storeId) {
+		return productRepository.findByStoreIdAndIsOpenTrue(storeId);
 	}
 
 	public Optional<Product> getProductById(Long id) {
@@ -27,12 +35,24 @@ public class ProductService {
 	}
 
 	@Transactional
-	public Product saveProduct(Product product) {
+	public Product saveProduct(Long storeId, Product product) {
+		if (product.getDiscountedPrice() == null) {
+			product.setDiscountedPrice(product.getOriginalPrice());
+		}
+		product.setStoreId(storeId);
 		return productRepository.save(product);
 	}
 
 	@Transactional
-	public void deleteProduct(Long id) {
-		productRepository.deleteById(id);
+	public void deleteProduct(Long storeId, Long productId) {
+		productRepository.deleteById(productId);
+	}
+
+	@Transactional
+	public Optional<Product> updateProductStatus(Long productId, boolean isOpen) {
+		return productRepository.findById(productId).map(product -> {
+			product.setIsOpen(isOpen);
+			return productRepository.save(product);
+		});
 	}
 }

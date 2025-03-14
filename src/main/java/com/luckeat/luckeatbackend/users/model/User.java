@@ -1,11 +1,11 @@
 package com.luckeat.luckeatbackend.users.model;
 
-import java.time.LocalDateTime;
+import com.luckeat.luckeatbackend.common.entity.BaseEntity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,15 +20,22 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private Role role; // 회원 역할 (ENUM)
 
-	private String username;
-	private String email;
-	private String password;
-	private String phoneNumber;
-	private LocalDateTime createdAt;
+	@Column(nullable = false, length = 255)
+	private String email; // 회원 이메일
+
+	@Column(nullable = false, length = 255)
+	private String password; // 회원 비밀번호 (SHA-256 암호화)
+
+	@Column(nullable = false, unique = true, length = 50)
+	private String nickname; // 회원 닉네임 (UNIQUE)
+
+	public enum Role {
+		BUYER, SELLER, ADMIN
+	}
 }
