@@ -5,7 +5,8 @@ on:
     branches: [ develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:  # 수동 실행 가능
+    types: [opened, synchronize]  # ✅ PR이 생성되거나 새로운 커밋이 추가될 때만 실행
+  workflow_dispatch:  # ✅ 수동 실행 가능
 
 jobs:
   build-test:
@@ -28,6 +29,9 @@ jobs:
         run: |
           mkdir -p src/main/resources
           echo "${{ secrets.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+
+      - name: Apply Spotless (Format Code)
+        run: ./gradlew spotlessApply --console=verbose
 
       - name: Clean and Build Project
         run: ./gradlew clean build --console=verbose
