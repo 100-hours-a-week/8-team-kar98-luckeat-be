@@ -3,6 +3,8 @@ plugins {
     id 'org.springframework.boot' version '3.4.3'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.diffplug.spotless' version '6.25.0' // auto code formatting
+    id 'checkstyle' // ✅ Checkstyle 추가
+
 }
 
 group = 'com.luckeat'
@@ -66,4 +68,12 @@ tasks.register('installGitHooks') {
 
 tasks.named('build').configure {
     dependsOn tasks.named('installGitHooks')
+}
+
+checkstyle {
+    toolVersion = "10.3" // 최신 버전 사용 가능
+    configFile = file("${rootProject.projectDir}/checkstyle/naver-checkstyle-rules.xml") // 네이버 코드 스타일 적용
+    configProperties = [
+        "suppressionFile": "${rootProject.projectDir}/checkstyle/naver-checkstyle-suppressions.xml"
+    ]
 }

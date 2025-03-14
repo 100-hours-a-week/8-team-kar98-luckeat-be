@@ -1,10 +1,10 @@
-name: Backend Semantic Release
+name: ⚙️ Backend Semantic Release
 
 on:
   push:
     branches:
       - main
-      - develop
+      # - develop #checkstyle.yml test하는 동안 주석처리
   workflow_dispatch:
 
 jobs:
