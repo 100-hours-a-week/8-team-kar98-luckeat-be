@@ -1,7 +1,10 @@
 {
   "branches": [
-    "develop",
-    "next"
+    "main",
+    {
+      "name": "develop",
+      "prerelease": true
+    }
   ],
   "plugins": [
     [

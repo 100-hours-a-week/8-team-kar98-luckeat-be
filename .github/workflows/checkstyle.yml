@@ -1,9 +1,6 @@
 name: 🛠 Checkstyle Validation
 
 on:
-  # push: #buildstyle.yml test하는 동안 주석처리
-  #   branches:
-  #     - develop
   pull_request:
     branches:
       - main

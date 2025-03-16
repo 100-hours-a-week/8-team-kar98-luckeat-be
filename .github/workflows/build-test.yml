@@ -1,10 +1,10 @@
-name: 🚀 Build & Test
+name: ⚙️ Build & Test
 
 on:
-  push:
-    branches: [ develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: 
+      - main
+      - develop
     types: [opened, synchronize]  # ✅ PR이 생성되거나 새로운 커밋이 추가될 때만 실행
   workflow_dispatch:  # ✅ 수동 실행 가능
 
