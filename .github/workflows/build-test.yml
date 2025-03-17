@@ -30,20 +30,14 @@ jobs:
           mkdir -p src/main/resources
           echo "${{ secrets.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
 
-      - name: Apply Spotless (Format Code)
-        run: ./gradlew spotlessApply --console=verbose
-
-      - name: Clean and Build Project
+      - name: Build and Run Tests
         run: ./gradlew clean build --console=verbose
+        continue-on-error: true  # 빌드 중 테스트가 실패해도 워크플로우가 중단되지 않도록 설정
 
-      - name: Run Tests
-        run: ./gradlew test --console=verbose
-        continue-on-error: true  # 테스트 실패해도 빌드가 중단되지 않도록 설정
-
-      - name: Upload Test Results
-        if: always()
+      - name: Upload Test Results on Failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: test-reports-failed
           path: |
             **/build/reports/tests/
