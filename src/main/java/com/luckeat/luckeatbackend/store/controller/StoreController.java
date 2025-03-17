@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.luckeat.luckeatbackend.store.model.Store;
+import com.luckeat.luckeatbackend.store.dto.StoreDto;
 import com.luckeat.luckeatbackend.store.service.StoreService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,35 +27,50 @@ public class StoreController {
 	private final StoreService storeService;
 
 	@GetMapping
-	public ResponseEntity<List<Store>> getAllStores() {
+	public ResponseEntity<List<StoreDto.Response>> getAllStores() {
 		return ResponseEntity.ok(storeService.getAllStores());
 	}
 
-	@GetMapping("/{store_id}")
-	public ResponseEntity<Store> getStoreById(@PathVariable Long storeId) {
-		return storeService.getStoreById(storeId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	@GetMapping("/category/{categoryId}")
+	public ResponseEntity<List<StoreDto.Response>> getStoresByCategory(@PathVariable Long categoryId) {
+		return ResponseEntity.ok(storeService.getStoresByCategory(categoryId));
+	}
+
+	@GetMapping("/user")
+	public ResponseEntity<List<StoreDto.Response>> getStoresByUser(@RequestParam(required = false) Long userId) {
+		return ResponseEntity.ok(storeService.getStoresByUser(userId));
+	}
+
+	@GetMapping("/{storeId}")
+	public ResponseEntity<StoreDto.Response> getStoreById(@PathVariable("storeId") Long storeId) {
+		return ResponseEntity.ok(storeService.getStoreById(storeId));
+	}
+
+	@GetMapping("/{storeId}/detail")
+	public ResponseEntity<StoreDto.DetailResponse> getStoreDetailById(@PathVariable("storeId") Long storeId) {
+		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
 
 	@PostMapping
-	public ResponseEntity<Store> createStore(@RequestBody Store store) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.saveStore(store));
+	public ResponseEntity<StoreDto.Response> createStore(@RequestBody StoreDto.Request storeRequest) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.createStore(storeRequest));
 	}
 
-	@PutMapping("/{store_id}")
-	public ResponseEntity<Store> updateStore(@PathVariable Long storeId, @RequestBody Store store) {
-		return storeService.getStoreById(storeId).map(existingStore -> {
-			store.setId(storeId);
-			return ResponseEntity.ok(storeService.saveStore(store));
-		}).orElse(ResponseEntity.notFound().build());
+	@PutMapping("/{storeId}")
+	public ResponseEntity<StoreDto.Response> updateStore(@PathVariable("storeId") Long storeId,
+			@RequestBody StoreDto.Request storeRequest) {
+		return ResponseEntity.ok(storeService.updateStore(storeId, storeRequest));
 	}
 
-	@DeleteMapping("/{store_id}")
-	public ResponseEntity<Void> deleteStore(@PathVariable Long storeId) {
-		// TODO: 소프트 삭제로 바꾸기
-		return storeService.getStoreById(storeId).map(store -> {
-			storeService.deleteStore(storeId);
-			return ResponseEntity.noContent().<Void>build();
-		}).orElse(ResponseEntity.notFound().build());
+	@DeleteMapping("/{storeId}")
+	public ResponseEntity<Void> deleteStore(@PathVariable("storeId") Long storeId) {
+		storeService.deleteStore(storeId);
+		return ResponseEntity.noContent().build();
+	}
 
+	@PostMapping("/{storeId}/share")
+	public ResponseEntity<Void> incrementShareCount(@PathVariable("storeId") Long storeId) {
+		storeService.incrementShareCount(storeId);
+		return ResponseEntity.ok().build();
 	}
 }
