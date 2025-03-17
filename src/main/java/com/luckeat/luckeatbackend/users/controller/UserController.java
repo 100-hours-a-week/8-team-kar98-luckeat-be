@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.luckeat.luckeatbackend.users.dto.LoginRequestDto;
+import com.luckeat.luckeatbackend.users.dto.LoginResponseDto;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 
@@ -53,9 +55,13 @@ public class UserController {
 
 	// 로그인
 	@PostMapping("/login")
-	public ResponseEntity<?> loginUser(@RequestBody User user) {
-		// TODO : 로그인 컨트롤러 기능 구현
-		return null;
+	public ResponseEntity<?> loginUser(@RequestBody LoginRequestDto loginRequestDto) {
+		try {
+			LoginResponseDto response = userService.login(loginRequestDto);
+			return ResponseEntity.ok(response);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+		}
 	}
 
 	// 닉네임 중복 확인
