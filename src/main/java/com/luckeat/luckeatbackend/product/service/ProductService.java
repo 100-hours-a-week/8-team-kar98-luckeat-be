@@ -6,8 +6,11 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.repository.ProductRepository;
+import com.luckeat.luckeatbackend.store.model.Store;
+import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,9 +20,11 @@ import lombok.RequiredArgsConstructor;
 public class ProductService {
 
 	private final ProductRepository productRepository;
+	private final StoreRepository storeRepository;
 
 	public List<Product> getAllProducts(Long storeId) {
-		return productRepository.findByStoreId(storeId);
+		Store store = getStoreById(storeId);
+		return productRepository.findByStore(store);
 	}
 
 	public Optional<Product> getProductById(Long storeId, Long productId) {
@@ -27,7 +32,8 @@ public class ProductService {
 	}
 
 	public List<Product> getOpenProductsByStoreId(Long storeId) {
-		return productRepository.findByStoreIdAndIsOpenTrue(storeId);
+		Store store = getStoreById(storeId);
+		return productRepository.findByStoreAndIsOpenTrue(store);
 	}
 
 	public Optional<Product> getProductById(Long id) {
@@ -39,7 +45,8 @@ public class ProductService {
 		if (product.getDiscountedPrice() == null) {
 			product.setDiscountedPrice(product.getOriginalPrice());
 		}
-		product.setStoreId(storeId);
+		Store store = getStoreById(storeId);
+		product.setStore(store);
 		return productRepository.save(product);
 	}
 
@@ -54,5 +61,10 @@ public class ProductService {
 			product.setIsOpen(isOpen);
 			return productRepository.save(product);
 		});
+	}
+
+	private Store getStoreById(Long storeId) {
+		return storeRepository.findByIdAndDeletedAtIsNull(storeId)
+				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
 	}
 }

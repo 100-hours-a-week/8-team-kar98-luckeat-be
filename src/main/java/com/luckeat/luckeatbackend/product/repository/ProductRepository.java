@@ -6,10 +6,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.luckeat.luckeatbackend.product.model.Product;
+import com.luckeat.luckeatbackend.store.model.Store;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-	List<Product> findByStoreId(Long storeId);
+	List<Product> findByStore(Store store);
 
-	List<Product> findByStoreIdAndIsOpenTrue(Long storeId);
+	List<Product> findByStoreAndIsOpenTrue(Store store);
+
+	List<Product> findByStoreAndDeletedAtIsNull(Store store);
+
+	List<Product> findByStoreAndIsOpenTrueAndDeletedAtIsNull(Store store);
 }
