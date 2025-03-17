@@ -119,28 +119,65 @@ public class StoreService {
 		storeRepository.save(store);
 	}
 
+	/**
+	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드
+	 * 
+	 * @param categoryId
+	 *            카테고리 ID (선택적)
+	 * @param lat
+	 *            위도 (선택적)
+	 * @param lng
+	 *            경도 (선택적)
+	 * @param radius
+	 *            검색 반경 (km) (선택적)
+	 * @param sort
+	 *            정렬 기준 (distance: 거리순, share: 공유순) (선택적)
+	 * @param storeName
+	 *            가게 이름 검색어 (선택적)
+	 * @param isDiscountOpen
+	 *            마감 할인 중인 가게만 필터링 (선택적)
+	 * @return 필터링 및 정렬된 가게 목록 DTO
+	 */
 	public List<StoreResponseDto> getStores(Long categoryId, Double lat, Double lng, Double radius, String sort,
-			String storeName) {
-		List<Store> stores;
+			String storeName, Boolean isDiscountOpen) {
+		// 1. 기본적으로 삭제되지 않은 모든 가게 조회 (deletedAt이 null인 가게들)
+		List<Store> stores = storeRepository.findAllByDeletedAtIsNull();
 
-		// 가게명 검색이 있는 경우 우선 처리
+		// 2. 가게명 검색 필터링 (storeName 파라미터가 존재하고 비어있지 않은 경우)
+		// - 대소문자 구분 없이 가게 이름에 검색어가 포함된 가게들만 필터링
 		if (storeName != null && !storeName.trim().isEmpty()) {
-			stores = storeRepository.findByStoreNameContainingAndDeletedAtIsNull(storeName);
-		}
-		// 필터링 로직
-		else if (categoryId != null) {
-			stores = storeRepository.findAllByCategoryId(categoryId).stream()
-					.filter(store -> store.getDeletedAt() == null).collect(Collectors.toList());
-		} else {
-			stores = storeRepository.findAllByDeletedAtIsNull();
+			stores = stores.stream()
+					.filter(store -> store.getStoreName().toLowerCase().contains(storeName.toLowerCase()))
+					.collect(Collectors.toList());
 		}
 
-		// 위치 기반 필터링
+		// 3. 카테고리 필터링 (categoryId 파라미터가 존재하는 경우)
+		// - 해당 카테고리에 속한 가게들만 필터링
+		if (categoryId != null) {
+			stores = stores.stream().filter(store -> store.getCategoryId().equals(categoryId))
+					.collect(Collectors.toList());
+		}
+
+		// 4. 위치 기반 필터링 (위도, 경도, 반경이 모두 제공된 경우)
+		// - 사용자 위치로부터 지정된 반경 내에 있는 가게들만 필터링
+		// - Haversine 공식을 사용하여 두 지점 간의 거리 계산
 		if (lat != null && lng != null && radius != null) {
 			stores = filterByDistance(stores, lat, lng, radius);
 		}
 
-		// 정렬 로직
+		// 5. 마감할인 중인 가게만 필터링 (isDiscountOpen 파라미터가 true인 경우)
+		// - 가게의 상품 중 마감 할인 중(is_open=true)인 상품이 하나 이상 있는 가게만 필터링
+		if (isDiscountOpen != null && isDiscountOpen) {
+			stores = stores.stream().filter(store -> {
+				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품 개수 확인
+				long openProductCount = productRepository.countByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
+				return openProductCount > 0; // 마감 할인 중인 상품이 하나라도 있으면 true 반환
+			}).collect(Collectors.toList());
+		}
+
+		// 6. 정렬 로직 적용 (sort 파라미터가 제공된 경우)
+		// - distance: 사용자 위치로부터 거리순 정렬
+		// - share: 공유 횟수 내림차순 정렬
 		if (sort != null) {
 			sortStores(stores, sort, lat, lng);
 		}

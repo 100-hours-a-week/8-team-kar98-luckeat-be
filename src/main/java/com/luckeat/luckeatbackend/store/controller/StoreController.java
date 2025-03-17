@@ -32,9 +32,9 @@ public class StoreController {
 	public ResponseEntity<List<StoreResponseDto>> getAllStores(@RequestParam(required = false) Long categoryId,
 			@RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
 			@RequestParam(required = false) Double radius, @RequestParam(required = false) String sort,
-			@RequestParam(required = false) String storeName) {
+			@RequestParam(required = false) String storeName, @RequestParam(required = false) Boolean isDiscountOpen) {
 
-		return ResponseEntity.ok(storeService.getStores(categoryId, lat, lng, radius, sort, storeName));
+		return ResponseEntity.ok(storeService.getStores(categoryId, lat, lng, radius, sort, storeName, isDiscountOpen));
 	}
 
 	@GetMapping("/{store_id}")
@@ -59,6 +59,7 @@ public class StoreController {
 		return ResponseEntity.noContent().build();
 	}
 
+	// TODO: 공유횟수 증가 엔드포인트는 필요한가??
 	@PostMapping("/{store_id}/share")
 	public ResponseEntity<Void> incrementShareCount(@PathVariable("storeId") Long storeId) {
 		storeService.incrementShareCount(storeId);
