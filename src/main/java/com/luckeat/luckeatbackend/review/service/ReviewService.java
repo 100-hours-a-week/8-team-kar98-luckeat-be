@@ -28,34 +28,37 @@ public class ReviewService {
 	private final ReviewRepository reviewRepository;
 
 	public List<ReviewResponseDto> getAllReviews() {
-		return reviewRepository.findAll().stream().map(ReviewResponseDto::fromEntity).collect(Collectors.toList());
+		return reviewRepository.findByDeletedAtIsNull().stream().map(ReviewResponseDto::fromEntity)
+				.collect(Collectors.toList());
 	}
 
+	// 소프트 삭제 적용 - 삭제된 리뷰 제외
 	public Optional<Review> getReviewById(Long id) {
-		return reviewRepository.findById(id);
+		return reviewRepository.findByIdAndDeletedAtIsNull(id);
 	}
 
+	// 소프트 삭제 적용 - 삭제된 리뷰 제외
 	public Optional<ReviewResponseDto> getReviewDtoById(Long id) {
-		return reviewRepository.findById(id).map(ReviewResponseDto::fromEntity);
+		return reviewRepository.findByIdAndDeletedAtIsNull(id).map(ReviewResponseDto::fromEntity);
 	}
 
 	public List<ReviewResponseDto> getReviewsByUser(User user) {
-		return reviewRepository.findByUserId(user.getId()).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByUserIdAndDeletedAtIsNull(user.getId()).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByUserId(Long userId) {
-		return reviewRepository.findByUserId(userId).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByUserIdAndDeletedAtIsNull(userId).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByProduct(Product product) {
-		return reviewRepository.findByStoreId(product.getStoreId()).stream().map(ReviewResponseDto::fromEntity)
-				.collect(Collectors.toList());
+		return reviewRepository.findByStoreIdAndDeletedAtIsNull(product.getStoreId()).stream()
+				.map(ReviewResponseDto::fromEntity).collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByStoreId(Long storeId) {
-		return reviewRepository.findByStoreId(storeId).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
@@ -69,7 +72,6 @@ public class ReviewService {
 		review.setRating(requestDto.getRating());
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
-		review.setIsDelete(false);
 
 		return reviewRepository.save(review);
 	}
@@ -78,7 +80,7 @@ public class ReviewService {
 	public Review updateReview(Long reviewId, ReviewUpdateDto updateDto, Long userId) {
 		validateReviewUpdate(updateDto);
 
-		Review existingReview = reviewRepository.findById(reviewId)
+		Review existingReview = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
 				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + reviewId));
 
 		if (!existingReview.getUserId().equals(userId)) {
@@ -95,14 +97,13 @@ public class ReviewService {
 
 	@Transactional
 	public void deleteReview(Long id, Long userId) {
-		Review review = reviewRepository.findById(id)
+		Review review = reviewRepository.findByIdAndDeletedAtIsNull(id)
 				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + id));
 
 		if (!review.getUserId().equals(userId)) {
 			throw new IllegalStateException("이 리뷰를 삭제할 권한이 없습니다");
 		}
 
-		review.setIsDelete(true);
 		review.setDeletedAt(LocalDateTime.now());
 		reviewRepository.save(review);
 	}
