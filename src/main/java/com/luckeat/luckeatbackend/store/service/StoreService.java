@@ -13,7 +13,9 @@ import com.luckeat.luckeatbackend.common.exception.store.StoreForbiddenException
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.repository.ProductRepository;
-import com.luckeat.luckeatbackend.store.dto.StoreDto;
+import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
+import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
+import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 
@@ -27,32 +29,27 @@ public class StoreService {
 	private final StoreRepository storeRepository;
 	private final ProductRepository productRepository;
 
-	public List<StoreDto.Response> getAllStores() {
-		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreDto.Response::fromEntity).toList();
+	public List<StoreResponseDto> getAllStores() {
+		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
 	}
 
-	public List<StoreDto.Response> getStoresByCategory(Long categoryId) {
+	public List<StoreResponseDto> getStoresByCategory(Long categoryId) {
 		return storeRepository.findAllByCategoryId(categoryId).stream().filter(store -> store.getDeletedAt() == null)
-				.map(StoreDto.Response::fromEntity).toList();
+				.map(StoreResponseDto::fromEntity).toList();
 	}
 
-	public List<StoreDto.Response> getStoresByUser(Long userId) {
-		return storeRepository.findAllByUserId(userId).stream().filter(store -> store.getDeletedAt() == null)
-				.map(StoreDto.Response::fromEntity).toList();
-	}
-
-	public List<StoreDto.Response> getStoresByName(String storeName) {
+	public List<StoreResponseDto> getStoresByName(String storeName) {
 		return storeRepository.findByStoreNameContainingAndDeletedAtIsNull(storeName).stream()
-				.map(StoreDto.Response::fromEntity).toList();
+				.map(StoreResponseDto::fromEntity).toList();
 	}
 
-	public StoreDto.Response getStoreById(Long storeId) {
+	public StoreResponseDto getStoreById(Long storeId) {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
-		return StoreDto.Response.fromEntity(store);
+		return StoreResponseDto.fromEntity(store);
 	}
 
-	public StoreDto.DetailResponse getStoreDetailById(Long storeId) {
+	public StoreDetailResponseDto getStoreDetailById(Long storeId) {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
 
@@ -60,22 +57,22 @@ public class StoreService {
 		List<Product> activeProducts = store.getProducts().stream().filter(product -> product.getDeletedAt() == null)
 				.collect(Collectors.toList());
 
-		return StoreDto.DetailResponse.fromEntity(store, activeProducts);
+		return StoreDetailResponseDto.fromEntity(store, activeProducts);
 	}
 
 	@Transactional
-	public StoreDto.Response createStore(StoreDto.Request request) {
+	public StoreResponseDto createStore(StoreRequestDto request) {
 		// 현재 인증된 사용자 정보 가져오기
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		Long userId = Long.parseLong(authentication.getName());
 
 		Store store = request.toEntity(userId);
 		Store savedStore = storeRepository.save(store);
-		return StoreDto.Response.fromEntity(savedStore);
+		return StoreResponseDto.fromEntity(savedStore);
 	}
 
 	@Transactional
-	public StoreDto.Response updateStore(Long storeId, StoreDto.Request request) {
+	public StoreResponseDto updateStore(Long storeId, StoreRequestDto request) {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
 
@@ -92,7 +89,7 @@ public class StoreService {
 		updatedStore.setId(storeId);
 		updatedStore.setShareCount(store.getShareCount()); // 공유 카운트 유지
 
-		return StoreDto.Response.fromEntity(storeRepository.save(updatedStore));
+		return StoreResponseDto.fromEntity(storeRepository.save(updatedStore));
 	}
 
 	@Transactional
@@ -122,8 +119,8 @@ public class StoreService {
 		storeRepository.save(store);
 	}
 
-	public List<StoreDto.Response> getStores(Long categoryId, Long userId, Double lat, Double lng, Double radius,
-			String sort, String storeName) {
+	public List<StoreResponseDto> getStores(Long categoryId, Double lat, Double lng, Double radius, String sort,
+			String storeName) {
 		List<Store> stores;
 
 		// 가게명 검색이 있는 경우 우선 처리
@@ -134,9 +131,6 @@ public class StoreService {
 		else if (categoryId != null) {
 			stores = storeRepository.findAllByCategoryId(categoryId).stream()
 					.filter(store -> store.getDeletedAt() == null).collect(Collectors.toList());
-		} else if (userId != null) {
-			stores = storeRepository.findAllByUserId(userId).stream().filter(store -> store.getDeletedAt() == null)
-					.collect(Collectors.toList());
 		} else {
 			stores = storeRepository.findAllByDeletedAtIsNull();
 		}
@@ -151,7 +145,7 @@ public class StoreService {
 			sortStores(stores, sort, lat, lng);
 		}
 
-		return stores.stream().map(StoreDto.Response::fromEntity).collect(Collectors.toList());
+		return stores.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList());
 	}
 
 	// 거리 계산 및 필터링 메소드

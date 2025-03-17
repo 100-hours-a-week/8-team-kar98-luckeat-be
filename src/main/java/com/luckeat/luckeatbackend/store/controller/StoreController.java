@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.luckeat.luckeatbackend.store.dto.StoreDto;
+import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
+import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
+import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.service.StoreService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,27 +29,27 @@ public class StoreController {
 	private final StoreService storeService;
 
 	@GetMapping
-	public ResponseEntity<List<StoreDto.Response>> getAllStores(@RequestParam(required = false) Long categoryId,
-			@RequestParam(required = false) Long userId, @RequestParam(required = false) Double lat,
-			@RequestParam(required = false) Double lng, @RequestParam(required = false) Double radius,
-			@RequestParam(required = false) String sort, @RequestParam(required = false) String storeName) {
+	public ResponseEntity<List<StoreResponseDto>> getAllStores(@RequestParam(required = false) Long categoryId,
+			@RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
+			@RequestParam(required = false) Double radius, @RequestParam(required = false) String sort,
+			@RequestParam(required = false) String storeName) {
 
-		return ResponseEntity.ok(storeService.getStores(categoryId, userId, lat, lng, radius, sort, storeName));
+		return ResponseEntity.ok(storeService.getStores(categoryId, lat, lng, radius, sort, storeName));
 	}
 
 	@GetMapping("/{store_id}")
-	public ResponseEntity<StoreDto.DetailResponse> getStoreDetailById(@PathVariable("storeId") Long storeId) {
+	public ResponseEntity<StoreDetailResponseDto> getStoreDetailById(@PathVariable("storeId") Long storeId) {
 		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
 
 	@PostMapping
-	public ResponseEntity<StoreDto.Response> createStore(@RequestBody StoreDto.Request storeRequest) {
+	public ResponseEntity<StoreResponseDto> createStore(@RequestBody StoreRequestDto storeRequest) {
 		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.createStore(storeRequest));
 	}
 
 	@PutMapping("/{store_id}")
-	public ResponseEntity<StoreDto.Response> updateStore(@PathVariable("storeId") Long storeId,
-			@RequestBody StoreDto.Request storeRequest) {
+	public ResponseEntity<StoreResponseDto> updateStore(@PathVariable("storeId") Long storeId,
+			@RequestBody StoreRequestDto storeRequest) {
 		return ResponseEntity.ok(storeService.updateStore(storeId, storeRequest));
 	}
 
