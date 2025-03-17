@@ -29,19 +29,17 @@ public class SecurityConfig {
 		http.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(
 						sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(authorize -> authorize
-						.requestMatchers("/api/auth/**").permitAll()
-						.requestMatchers("/api/users/signup").permitAll()
-						.requestMatchers("/api/users/login").permitAll()
-						.requestMatchers("/api/v1/users/login").permitAll()
+				.authorizeHttpRequests(authorize -> authorize.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/users/signup").permitAll().requestMatchers("/api/users/login")
+						.permitAll().requestMatchers("/api/v1/users/login").permitAll()
 						.requestMatchers("/api/v1/users/register").permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-						
+
 						.requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/reviews/**").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/reviews/**").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/api/v1/reviews/**").authenticated()
-						
+
 						.anyRequest().authenticated())
 				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
 						UsernamePasswordAuthenticationFilter.class);
