@@ -34,16 +34,8 @@ public class SecurityConfig {
 						.permitAll().requestMatchers("/api/v1/users/login").permitAll()
 						.requestMatchers("/api/v1/users/register").permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-
-
-						.requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
-						.requestMatchers(HttpMethod.POST, "/api/v1/reviews/**").authenticated()
-						.requestMatchers(HttpMethod.PUT, "/api/v1/reviews/**").authenticated()
-						.requestMatchers(HttpMethod.DELETE, "/api/v1/reviews/**").authenticated()
-
-
-
 						.requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
+						.requestMatchers("/api/v1/reviews/**").authenticated()
 						.requestMatchers("/api/v1/categories", "/api/v1/categories/**").authenticated().anyRequest()
 						.authenticated())
 				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
