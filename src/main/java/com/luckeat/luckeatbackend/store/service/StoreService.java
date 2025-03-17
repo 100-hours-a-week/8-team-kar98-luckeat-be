@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.store.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -114,5 +115,69 @@ public class StoreService {
 
 		store.setShareCount(store.getShareCount() + 1);
 		storeRepository.save(store);
+	}
+
+	public List<StoreDto.Response> getStores(Long categoryId, Long userId, Double lat, Double lng, Double radius,
+			String sort) {
+		List<Store> stores;
+
+		// 필터링 로직
+		if (categoryId != null) {
+			stores = storeRepository.findAllByCategoryId(categoryId).stream()
+					.filter(store -> store.getDeletedAt() == null).collect(Collectors.toList());
+		} else if (userId != null) {
+			stores = storeRepository.findAllByUserId(userId).stream().filter(store -> store.getDeletedAt() == null)
+					.collect(Collectors.toList());
+		} else {
+			stores = storeRepository.findAllByDeletedAtIsNull();
+		}
+
+		// 위치 기반 필터링
+		if (lat != null && lng != null && radius != null) {
+			stores = filterByDistance(stores, lat, lng, radius);
+		}
+
+		// 정렬 로직
+		if (sort != null) {
+			sortStores(stores, sort, lat, lng);
+		}
+
+		return stores.stream().map(StoreDto.Response::fromEntity).collect(Collectors.toList());
+	}
+
+	// 거리 계산 및 필터링 메소드
+	private List<Store> filterByDistance(List<Store> stores, Double lat, Double lng, Double radius) {
+		return stores.stream()
+				.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
+				.collect(Collectors.toList());
+	}
+
+	// 거리 계산 메소드 (Haversine 공식)
+	private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+		double earthRadius = 6371; // 지구 반경 (km)
+		double dLat = Math.toRadians(lat2 - lat1);
+		double dLng = Math.toRadians(lng2 - lng1);
+		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
+				* Math.cos(Math.toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+		double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return earthRadius * c;
+	}
+
+	// 정렬 메소드
+	private void sortStores(List<Store> stores, String sort, Double lat, Double lng) {
+		switch (sort) {
+			case "distance" :
+				if (lat != null && lng != null) {
+					stores.sort(Comparator.comparingDouble(
+							store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
+				}
+				break;
+			case "share" :
+				stores.sort(Comparator.comparing(Store::getShareCount).reversed());
+				break;
+			default :
+				// 기본 정렬 또는 다른 정렬 옵션
+				break;
+		}
 	}
 }

@@ -27,26 +27,20 @@ public class StoreController {
 	private final StoreService storeService;
 
 	@GetMapping
-	public ResponseEntity<List<StoreDto.Response>> getAllStores() {
-		return ResponseEntity.ok(storeService.getAllStores());
+	public ResponseEntity<List<StoreDto.Response>> getAllStores(
+			// 카테고리, 유저, 가까운순 정렬
+			@RequestParam(required = false) Long categoryId, @RequestParam(required = false) Long userId,
+			@RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
+			@RequestParam(required = false) Double radius, @RequestParam(required = false) String sort) {
+		return ResponseEntity.ok(storeService.getStores(categoryId, userId, lat, lng, radius, sort));
 	}
 
-	@GetMapping("/category/{categoryId}")
-	public ResponseEntity<List<StoreDto.Response>> getStoresByCategory(@PathVariable Long categoryId) {
-		return ResponseEntity.ok(storeService.getStoresByCategory(categoryId));
-	}
-
-	@GetMapping("/user")
-	public ResponseEntity<List<StoreDto.Response>> getStoresByUser(@RequestParam(required = false) Long userId) {
-		return ResponseEntity.ok(storeService.getStoresByUser(userId));
-	}
-
-	@GetMapping("/{storeId}")
+	@GetMapping("/{store_id}")
 	public ResponseEntity<StoreDto.Response> getStoreById(@PathVariable("storeId") Long storeId) {
 		return ResponseEntity.ok(storeService.getStoreById(storeId));
 	}
 
-	@GetMapping("/{storeId}/detail")
+	@GetMapping("/{store_id}/detail")
 	public ResponseEntity<StoreDto.DetailResponse> getStoreDetailById(@PathVariable("storeId") Long storeId) {
 		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
@@ -56,19 +50,19 @@ public class StoreController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.createStore(storeRequest));
 	}
 
-	@PutMapping("/{storeId}")
+	@PutMapping("/{store_id}")
 	public ResponseEntity<StoreDto.Response> updateStore(@PathVariable("storeId") Long storeId,
 			@RequestBody StoreDto.Request storeRequest) {
 		return ResponseEntity.ok(storeService.updateStore(storeId, storeRequest));
 	}
 
-	@DeleteMapping("/{storeId}")
+	@DeleteMapping("/{store_id}")
 	public ResponseEntity<Void> deleteStore(@PathVariable("storeId") Long storeId) {
 		storeService.deleteStore(storeId);
 		return ResponseEntity.noContent().build();
 	}
 
-	@PostMapping("/{storeId}/share")
+	@PostMapping("/{store_id}/share")
 	public ResponseEntity<Void> incrementShareCount(@PathVariable("storeId") Long storeId) {
 		storeService.incrementShareCount(storeId);
 		return ResponseEntity.ok().build();
