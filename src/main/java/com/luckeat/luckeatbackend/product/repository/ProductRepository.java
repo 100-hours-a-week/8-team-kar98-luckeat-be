@@ -17,4 +17,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	List<Product> findByStoreAndDeletedAtIsNull(Store store);
 
 	List<Product> findByStoreAndIsOpenTrueAndDeletedAtIsNull(Store store);
+
+	// 특정 가게의 마감할인 중인 상품 개수 조회
+	// 삭제되지 않은 상품 중에서 마감할인 중인 상품 개수 조회
+	// 1개 이상이면 마감할인 중인 가게임 	
+	long countByStoreIdAndIsOpenTrueAndDeletedAtIsNull(Long storeId);
 }
