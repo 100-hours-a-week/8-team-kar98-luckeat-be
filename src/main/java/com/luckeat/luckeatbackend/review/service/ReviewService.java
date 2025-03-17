@@ -50,7 +50,7 @@ public class ReviewService {
 	}
 
 	public List<ReviewResponseDto> getReviewsByProduct(Product product) {
-		return reviewRepository.findByStoreId(product.getStoreId()).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByStoreId(product.getStore().getId()).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
