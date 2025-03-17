@@ -42,15 +42,15 @@ public class CategoryService {
 
 		// 카테고리 이미지 유효성 검사 추가
 		validateCategoryImage(category.getCategoryImage());
-		
+
 		return categoryRepository.save(category);
 	}
-	
+
 	private void validateCategoryName(String name) {
 		if (name == null || name.trim().isEmpty()) {
 			throw new CategoryInvalidNameException("카테고리 이름은 필수입니다.");
 		}
-		
+
 		if (name.length() < 1 || name.length() > 10) {
 			throw new CategoryInvalidNameException("카테고리 이름은 1자 이상 10자 이하여야 합니다.");
 		}
@@ -59,12 +59,12 @@ public class CategoryService {
 			throw new CategoryInvalidNameException("카테고리 이름은 한글만 포함할 수 있습니다.");
 		}
 	}
-	
+
 	private void validateCategoryImage(String imageUrl) {
 		if (imageUrl == null || imageUrl.trim().isEmpty()) {
 			throw new CategoryInvalidImageException("카테고리 이미지는 필수입니다.");
 		}
-		
+
 		if (!imageUrl.matches("^(http|https)://.*\\.(jpg|jpeg|png|gif|bmp|webp)$")) {
 			throw new CategoryInvalidImageException("유효한 이미지 URL 형식이 아닙니다.");
 		}

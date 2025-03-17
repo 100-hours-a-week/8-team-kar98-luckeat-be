@@ -40,8 +40,8 @@ public class CategoryController {
 	// 카테고리 아이디로 카테고리 가져오기
 	@GetMapping("/{category_id}")
 	public ResponseEntity<Category> getCategoryById(@PathVariable("category_id") Long categoryId) {
-		return ResponseEntity.ok(categoryService.getCategoryById(categoryId)
-				.orElseThrow(() -> new CategoryNotFoundException()));
+		return ResponseEntity
+				.ok(categoryService.getCategoryById(categoryId).orElseThrow(() -> new CategoryNotFoundException()));
 	}
 
 	// 카테고리 생성
@@ -51,24 +51,24 @@ public class CategoryController {
 			return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.saveCategory(category));
 		} catch (CategoryNameDuplicateException | CategoryInvalidNameException | CategoryInvalidImageException e) {
 			log.warn("카테고리 생성 중 검증 오류 발생: {}", e.getMessage());
-        	throw e;
-    	}
+			throw e;
+		}
 	}
 
 	// 카테고리 수정
 	@PutMapping("/{category_id}")
-	public ResponseEntity<Category> updateCategory(@PathVariable("category_id") Long categoryId, @RequestBody Category category) {
+	public ResponseEntity<Category> updateCategory(@PathVariable("category_id") Long categoryId,
+			@RequestBody Category category) {
 		// 먼저 카테고리 존재 여부 확인
-		categoryService.getCategoryById(categoryId)
-				.orElseThrow(() -> new CategoryNotFoundException());
-		
+		categoryService.getCategoryById(categoryId).orElseThrow(() -> new CategoryNotFoundException());
+
 		category.setId(categoryId);
 		try {
 			return ResponseEntity.ok(categoryService.saveCategory(category));
 		} catch (CategoryNameDuplicateException | CategoryInvalidNameException | CategoryInvalidImageException e) {
 			log.warn("카테고리 수정 중 검증 오류 발생: {}", e.getMessage());
-        	throw e;
-    	}
+			throw e;
+		}
 	}
 
 	// 카테고리 삭제
@@ -76,7 +76,7 @@ public class CategoryController {
 	public ResponseEntity<Void> deleteCategory(@PathVariable("category_id") Long categoryId) {
 		Category existingCategory = categoryService.getCategoryById(categoryId)
 				.orElseThrow(() -> new CategoryNotFoundException());
-		
+
 		existingCategory.setDeletedAt(LocalDateTime.now());
 		categoryService.saveCategory(existingCategory);
 		return ResponseEntity.noContent().build();
