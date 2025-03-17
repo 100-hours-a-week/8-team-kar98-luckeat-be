@@ -41,6 +41,11 @@ public class StoreService {
 				.map(StoreDto.Response::fromEntity).toList();
 	}
 
+	public List<StoreDto.Response> getStoresByName(String storeName) {
+		return storeRepository.findByStoreNameContainingAndDeletedAtIsNull(storeName).stream()
+				.map(StoreDto.Response::fromEntity).toList();
+	}
+
 	public StoreDto.Response getStoreById(Long storeId) {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
@@ -118,11 +123,15 @@ public class StoreService {
 	}
 
 	public List<StoreDto.Response> getStores(Long categoryId, Long userId, Double lat, Double lng, Double radius,
-			String sort) {
+			String sort, String storeName) {
 		List<Store> stores;
 
+		// 가게명 검색이 있는 경우 우선 처리
+		if (storeName != null && !storeName.trim().isEmpty()) {
+			stores = storeRepository.findByStoreNameContainingAndDeletedAtIsNull(storeName);
+		}
 		// 필터링 로직
-		if (categoryId != null) {
+		else if (categoryId != null) {
 			stores = storeRepository.findAllByCategoryId(categoryId).stream()
 					.filter(store -> store.getDeletedAt() == null).collect(Collectors.toList());
 		} else if (userId != null) {

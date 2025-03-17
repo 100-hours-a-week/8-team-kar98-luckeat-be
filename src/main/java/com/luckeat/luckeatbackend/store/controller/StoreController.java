@@ -1,6 +1,7 @@
 package com.luckeat.luckeatbackend.store.controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,11 +29,15 @@ public class StoreController {
 
 	@GetMapping
 	public ResponseEntity<List<StoreDto.Response>> getAllStores(
-			// 카테고리, 유저, 가까운순 정렬
-			@RequestParam(required = false) Long categoryId, @RequestParam(required = false) Long userId,
-			@RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
-			@RequestParam(required = false) Double radius, @RequestParam(required = false) String sort) {
-		return ResponseEntity.ok(storeService.getStores(categoryId, userId, lat, lng, radius, sort));
+			@RequestParam(required = false) Long categoryId,
+			@RequestParam(required = false) Long userId,
+			@RequestParam(required = false) Double lat,
+			@RequestParam(required = false) Double lng,
+			@RequestParam(required = false) Double radius,
+			@RequestParam(required = false) String sort,
+			@RequestParam(required = false) String storeName) {
+		
+		return ResponseEntity.ok(storeService.getStores(categoryId, userId, lat, lng, radius, sort, storeName));
 	}
 
 	@GetMapping("/{store_id}")
