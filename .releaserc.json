@@ -3,7 +3,7 @@
     "main",
     {
       "name": "develop",
-      "prerelease": true
+      "prerelease": "beta"
     }
   ],
   "plugins": [
@@ -150,7 +150,6 @@
     ],
     "@semantic-release/github",
     [
-      "@semantic-release/git",
       {
         "assets": [
           "build.gradle",
