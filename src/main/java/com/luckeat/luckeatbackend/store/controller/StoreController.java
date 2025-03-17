@@ -1,7 +1,6 @@
 package com.luckeat.luckeatbackend.store.controller;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,24 +27,15 @@ public class StoreController {
 	private final StoreService storeService;
 
 	@GetMapping
-	public ResponseEntity<List<StoreDto.Response>> getAllStores(
-			@RequestParam(required = false) Long categoryId,
-			@RequestParam(required = false) Long userId,
-			@RequestParam(required = false) Double lat,
-			@RequestParam(required = false) Double lng,
-			@RequestParam(required = false) Double radius,
-			@RequestParam(required = false) String sort,
-			@RequestParam(required = false) String storeName) {
-		
+	public ResponseEntity<List<StoreDto.Response>> getAllStores(@RequestParam(required = false) Long categoryId,
+			@RequestParam(required = false) Long userId, @RequestParam(required = false) Double lat,
+			@RequestParam(required = false) Double lng, @RequestParam(required = false) Double radius,
+			@RequestParam(required = false) String sort, @RequestParam(required = false) String storeName) {
+
 		return ResponseEntity.ok(storeService.getStores(categoryId, userId, lat, lng, radius, sort, storeName));
 	}
 
 	@GetMapping("/{store_id}")
-	public ResponseEntity<StoreDto.Response> getStoreById(@PathVariable("storeId") Long storeId) {
-		return ResponseEntity.ok(storeService.getStoreById(storeId));
-	}
-
-	@GetMapping("/{store_id}/detail")
 	public ResponseEntity<StoreDto.DetailResponse> getStoreDetailById(@PathVariable("storeId") Long storeId) {
 		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
