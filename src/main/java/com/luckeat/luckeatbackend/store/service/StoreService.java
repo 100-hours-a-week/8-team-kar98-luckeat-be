@@ -147,8 +147,7 @@ public class StoreService {
 		// - 대소문자 구분 없이 가게 이름에 검색어가 포함된 가게들만 필터링
 		if (storeName != null && !storeName.trim().isEmpty()) {
 			String searchTerm = storeName.trim().toLowerCase();
-			stores = stores.stream()
-					.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
+			stores = stores.stream().filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
 					.collect(Collectors.toList());
 		}
 
