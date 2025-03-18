@@ -1,13 +1,13 @@
 package com.luckeat.luckeatbackend.common.exception.category;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.ConflictException;
-
 public class CategoryNameDuplicateException extends ConflictException {
 	public CategoryNameDuplicateException() {
-		super("카테고리 이름 중복");
+		super(ErrorCode.CATEGORY_NAME_DUPLICATE, ErrorCode.CATEGORY_NAME_DUPLICATE.getMessage());
 	}
 
 	public CategoryNameDuplicateException(String message) {
-		super(message);
+		super(ErrorCode.CATEGORY_NAME_DUPLICATE, message);
 	}
 }

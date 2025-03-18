@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.review;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class ReviewInvalidRatingException extends BadRequestException {
 	public ReviewInvalidRatingException() {
-		super("올바른 평점 형식이 아닙니다");
+		super(ErrorCode.REVIEW_INVALID_RATING, ErrorCode.REVIEW_INVALID_RATING.getMessage());
 	}
 
 	public ReviewInvalidRatingException(String message) {
-		super(message);
+		super(ErrorCode.REVIEW_INVALID_RATING, message);
 	}
 }

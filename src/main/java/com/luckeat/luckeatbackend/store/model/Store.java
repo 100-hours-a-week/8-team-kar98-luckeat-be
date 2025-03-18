@@ -1,11 +1,16 @@
 package com.luckeat.luckeatbackend.store.model;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.luckeat.luckeatbackend.common.entity.BaseEntity;
+import com.luckeat.luckeatbackend.product.model.Product;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -67,5 +72,9 @@ public class Store extends BaseEntity {
 
 	@Column(name = "weekend_close_time")
 	private LocalTime weekendCloseTime;
+
+	@OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
+	@Builder.Default
+	private List<Product> products = new ArrayList<>();
 
 }
