@@ -25,35 +25,35 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(CustomException.class)
 	public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
 		log.error("CustomException: {}", e.getMessage());
-		return ResponseEntity.status(e.getErrorCode().getStatus()).body(ErrorResponse.of(e.getErrorCode()));
+		return ResponseEntity.status(e.getErrorCode().getStatus()).body(new ErrorResponse(e.getErrorCode()));
 	}
 
 	// 인증 관련 예외 처리
 	@ExceptionHandler(AuthenticationException.class)
 	public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
 		log.error("AuthenticationException: {}", e.getMessage());
-		return ResponseEntity.status(401).body(ErrorResponse.of(ErrorCode.UNAUTHORIZED));
+		return ResponseEntity.status(401).body(new ErrorResponse(ErrorCode.UNAUTHORIZED));
 	}
 
 	// 권한 관련 예외 처리
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
 		log.error("AccessDeniedException: {}", e.getMessage());
-		return ResponseEntity.status(403).body(ErrorResponse.of(ErrorCode.FORBIDDEN));
+		return ResponseEntity.status(403).body(new ErrorResponse(ErrorCode.FORBIDDEN));
 	}
 
 	// 로그인 실패 예외 처리
 	@ExceptionHandler(BadCredentialsException.class)
 	public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException e) {
 		log.error("BadCredentialsException: {}", e.getMessage());
-		return ResponseEntity.status(401).body(ErrorResponse.of("잘못된 인증 정보입니다."));
+		return ResponseEntity.status(401).body(new ErrorResponse(ErrorCode.UNAUTHORIZED));
 	}
 
 	// 유효성 검사 예외 처리
 	@ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
 	public ResponseEntity<ErrorResponse> handleValidationException(Exception e) {
 		log.error("ValidationException: {}", e.getMessage());
-		return ResponseEntity.status(400).body(ErrorResponse.of(ErrorCode.BAD_REQUEST));
+		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST));
 	}
 
 	// 잘못된 요청 파라미터 타입 예외 처리
@@ -61,20 +61,20 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
 			MethodArgumentTypeMismatchException e) {
 		log.error("MethodArgumentTypeMismatchException: {}", e.getMessage());
-		return ResponseEntity.status(400).body(ErrorResponse.of("요청 파라미터 타입이 올바르지 않습니다."));
+		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST));
 	}
 
 	// 데이터베이스 접근 예외 처리
 	@ExceptionHandler({SQLException.class, DataAccessException.class})
 	public ResponseEntity<ErrorResponse> handleDatabaseException(Exception e) {
 		log.error("DatabaseException: {}", e.getMessage());
-		return ResponseEntity.status(500).body(ErrorResponse.of(ErrorCode.DATABASE_ERROR));
+		return ResponseEntity.status(500).body(new ErrorResponse(ErrorCode.DATABASE_ERROR));
 	}
 
 	// 그 외 모든 예외 처리
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(Exception e) {
 		log.error("Exception: {}", e.getMessage(), e);
-		return ResponseEntity.status(500).body(ErrorResponse.of(ErrorCode.INTERNAL_SERVER_ERROR));
+		return ResponseEntity.status(500).body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
 	}
 }

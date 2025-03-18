@@ -34,7 +34,7 @@ public class CategoryService {
 	public Category saveCategory(Category category) {
 		// 카테고리 이름 중복 검사 추가
 		if (categoryRepository.existsByNameAndDeletedFalse(category.getCategoryName())) {
-			throw new CategoryNameDuplicateException("이미 존재하는 카테고리 이름입니다: " + category.getCategoryName());
+			throw new CategoryNameDuplicateException();
 		}
 
 		// 카테고리 이름 유효성 검사 추가
@@ -48,25 +48,25 @@ public class CategoryService {
 
 	private void validateCategoryName(String name) {
 		if (name == null || name.trim().isEmpty()) {
-			throw new CategoryInvalidNameException("카테고리 이름은 필수입니다.");
+			throw new CategoryInvalidNameException();
 		}
 
 		if (name.length() < 1 || name.length() > 10) {
-			throw new CategoryInvalidNameException("카테고리 이름은 1자 이상 10자 이하여야 합니다.");
+			throw new CategoryInvalidNameException();
 		}
 
 		if (!name.matches("^[가-힣]+$")) {
-			throw new CategoryInvalidNameException("카테고리 이름은 한글만 포함할 수 있습니다.");
+			throw new CategoryInvalidNameException();
 		}
 	}
 
 	private void validateCategoryImage(String imageUrl) {
 		if (imageUrl == null || imageUrl.trim().isEmpty()) {
-			throw new CategoryInvalidImageException("카테고리 이미지는 필수입니다.");
+			throw new CategoryInvalidImageException();
 		}
 
 		if (!imageUrl.matches("^(http|https)://.*\\.(jpg|jpeg|png|gif|bmp|webp)$")) {
-			throw new CategoryInvalidImageException("유효한 이미지 URL 형식이 아닙니다.");
+			throw new CategoryInvalidImageException();
 		}
 	}
 }

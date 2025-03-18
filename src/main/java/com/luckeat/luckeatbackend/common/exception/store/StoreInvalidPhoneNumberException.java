@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.store;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class StoreInvalidPhoneNumberException extends BadRequestException {
 	public StoreInvalidPhoneNumberException() {
-		super("올바른 전화번호 형식이 아닙니다");
+		super(ErrorCode.STORE_INVALID_PHONE_NUMBER, ErrorCode.STORE_INVALID_PHONE_NUMBER.getMessage());
 	}
 
 	public StoreInvalidPhoneNumberException(String message) {
-		super(message);
+		super(ErrorCode.STORE_INVALID_PHONE_NUMBER, message);
 	}
 }
