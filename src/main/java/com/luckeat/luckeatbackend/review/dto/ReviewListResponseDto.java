@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReviewListResponseDto {
 
-	private String message;
 	private List<ReviewResponseDto> reviews;
 	private Integer totalPages;
 }

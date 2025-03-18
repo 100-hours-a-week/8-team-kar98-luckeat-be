@@ -4,17 +4,25 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.luckeat.luckeatbackend.permission.service.ReviewPermissionService;
-import com.luckeat.luckeatbackend.product.service.ProductService;
-import com.luckeat.luckeatbackend.review.dto.MessageResponseDto;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewInvalidContentException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewInvalidImageException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewInvalidRatingException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewNotFoundException;
 import com.luckeat.luckeatbackend.review.dto.ReviewListResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewRequestDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewUpdateDto;
 import com.luckeat.luckeatbackend.review.service.ReviewService;
-import com.luckeat.luckeatbackend.users.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,145 +34,187 @@ import lombok.extern.slf4j.Slf4j;
 public class ReviewController {
 
 	private final ReviewService reviewService;
-	private final ProductService productService;
-	private final UserService userService;
-	private final ReviewPermissionService permissionService;
 
+	/**
+	 * 모든 리뷰를 조회합니다
+	 * 
+	 * @return 모든 리뷰 목록과 페이지 정보가 포함된 응답
+	 * @throws ReviewNotFoundException
+	 *             리뷰가 하나도 없을 경우 발생
+	 */
 	@GetMapping
 	public ResponseEntity<ReviewListResponseDto> getAllReviews() {
 		List<ReviewResponseDto> reviews = reviewService.getAllReviews();
 
-		ReviewListResponseDto response = ReviewListResponseDto.builder().message("리뷰 목록 조회 성공").reviews(reviews)
-				.totalPages(1).build();
+		// 리뷰가 없는 경우 예외 발생
+		if (reviews.isEmpty()) {
+			throw new ReviewNotFoundException();
+		}
+
+		// TODO: 페이지네이션 구현 시 실제 페이지 수 계산 로직 추가 필요
+		// int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+		ReviewListResponseDto response = ReviewListResponseDto.builder().reviews(reviews).totalPages(1).build();
 
 		return ResponseEntity.ok(response);
 	}
 
+	/**
+	 * 특정 ID의 리뷰를 조회합니다
+	 * 
+	 * @param id
+	 *            조회할 리뷰의 ID
+	 * @return 조회된 리뷰 정보가 포함된 응답
+	 * @throws ReviewNotFoundException
+	 *             해당 ID의 리뷰가 없거나 삭제된 경우 발생
+	 */
 	@GetMapping("/{review_id}")
-	public ResponseEntity<?> getReviewById(@PathVariable("review_id") Long id) {
-		if (reviewService.getReviewDtoById(id).isPresent()) {
-			ReviewResponseDto review = reviewService.getReviewDtoById(id).get();
+	public ResponseEntity<ReviewListResponseDto> getReviewById(@PathVariable("review_id") Long id) {
+		// ID로 리뷰를 찾고, 없으면 ReviewNotFoundException 발생
+		ReviewResponseDto review = reviewService.getReviewDtoById(id).orElseThrow(() -> new ReviewNotFoundException());
 
-			ReviewListResponseDto response = ReviewListResponseDto.builder().message("리뷰 조회 성공")
-					.reviews(List.of(review)).totalPages(1).build();
+		// TODO: 페이지네이션 구현 시 수정 필요 (단일 리뷰 조회는 항상 1페이지)
+		ReviewListResponseDto response = ReviewListResponseDto.builder().reviews(List.of(review)).totalPages(1).build();
 
-			return ResponseEntity.ok(response);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponseDto.error("리뷰를 찾을 수 없습니다"));
-		}
+		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/user/{user_id}")
-	public ResponseEntity<?> getReviewsByUser(@PathVariable("user_id") Long userId) {
-		if (userService.getUserById(userId).isPresent()) {
-			List<ReviewResponseDto> reviews = reviewService.getReviewsByUser(userService.getUserById(userId).get());
+	/**
+	 * 특정 가게의 모든 리뷰를 조회합니다
+	 * 
+	 * @param storeId
+	 *            리뷰를 조회할 가게의 ID
+	 * @return 가게에 대한 리뷰 목록과 페이지 정보가 포함된 응답
+	 * @throws ReviewNotFoundException
+	 *             해당 가게에 리뷰가 하나도 없을 경우 발생
+	 */
+	@GetMapping("/store/{store_id}")
+	public ResponseEntity<ReviewListResponseDto> getReviewsByStore(@PathVariable("store_id") Long storeId) {
+		List<ReviewResponseDto> reviews = reviewService.getReviewsByStoreId(storeId);
 
-			ReviewListResponseDto response = ReviewListResponseDto.builder().message("사용자 리뷰 목록 조회 성공").reviews(reviews)
-					.totalPages(1) // TODO: 페이지네이션 구현 시 수정 필요
-					.build();
-
-			return ResponseEntity.ok(response);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponseDto.error("사용자를 찾을 수 없습니다"));
+		if (reviews.isEmpty()) {
+			throw new ReviewNotFoundException("해당 가게의 리뷰가 없습니다");
 		}
+
+		// TODO: 페이지네이션 구현 시 가게별 리뷰 총 개수와 페이지 크기에 따라 totalPages 계산 필요
+		// int totalPages = (int) Math.ceil((double) totalReviewCount / pageSize);
+		ReviewListResponseDto response = ReviewListResponseDto.builder().reviews(reviews).totalPages(1).build();
+
+		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/product/{product_id}")
-	public ResponseEntity<?> getReviewsByProduct(@PathVariable("product_id") Long productId) {
-		if (productService.getProductById(productId).isPresent()) {
-			List<ReviewResponseDto> reviews = reviewService
-					.getReviewsByProduct(productService.getProductById(productId).get());
+	/**
+	 * 현재 인증된 사용자가 작성한 모든 리뷰를 조회합니다
+	 * 
+	 * @return 사용자가 작성한 리뷰 목록과 페이지 정보가 포함된 응답
+	 * @throws ReviewNotFoundException
+	 *             사용자가 작성한 리뷰가 하나도 없을 경우 발생
+	 */
+	@GetMapping("/my-reviews")
+	public ResponseEntity<ReviewListResponseDto> getMyReviews() {
+		List<ReviewResponseDto> reviews = reviewService.getMyReviews();
 
-			ReviewListResponseDto response = ReviewListResponseDto.builder().message("상품 리뷰 목록 조회 성공").reviews(reviews)
-					.totalPages(1) // TODO: 페이지네이션 구현 시 수정 필요
-					.build();
-
-			return ResponseEntity.ok(response);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponseDto.error("상품을 찾을 수 없습니다"));
+		if (reviews.isEmpty()) {
+			throw new ReviewNotFoundException("작성한 리뷰가 없습니다");
 		}
+
+		// TODO: 페이지네이션 구현 시 내 리뷰 총 개수와 페이지 크기에 따라 totalPages 계산 필요
+		// int totalPages = (int) Math.ceil((double) myReviewCount / pageSize);
+		ReviewListResponseDto response = ReviewListResponseDto.builder().reviews(reviews).totalPages(1).build();
+
+		return ResponseEntity.ok(response);
 	}
 
+	/**
+	 * 새로운 리뷰를 생성합니다 (인증된 사용자만 가능)
+	 * 
+	 * @param requestDto
+	 *            리뷰 생성에 필요한 정보 (가게ID, 평점, 리뷰내용, 이미지URL 등)
+	 * @return 생성 성공 시 201 Created 상태 코드 반환 (본문 없음)
+	 * @throws ReviewInvalidContentException
+	 *             리뷰 내용이 유효하지 않을 경우 발생
+	 * @throws ReviewInvalidRatingException
+	 *             평점이 유효하지 않을 경우 발생
+	 * @throws ReviewInvalidImageException
+	 *             이미지 URL이 유효하지 않을 경우 발생
+	 * @throws ReviewForbiddenException
+	 *             사용자에게 리뷰 작성 권한이 없을 경우 발생
+	 */
 	@PostMapping
-	public ResponseEntity<MessageResponseDto> createReview(@RequestBody ReviewRequestDto requestDto,
-			@RequestParam(required = false) Long userId) {
-
+	public ResponseEntity<Void> createReview(@RequestBody ReviewRequestDto requestDto) {
 		try {
-			// TODO: 임시로 사용자 ID를 파라미터로 받음 (실제로는 인증 정보에서 가져와야 함)
-			if (userId == null) {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(MessageResponseDto.error("인증이 필요합니다"));
-			}
+			// 리뷰 생성
+			reviewService.createReview(requestDto);
 
-			if (!permissionService.hasPermission(userId, requestDto.getStoreId())) {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(MessageResponseDto.error("리뷰 작성 권한이 없습니다"));
-			}
-
-			reviewService.createReview(requestDto, userId);
-
-			return ResponseEntity.status(HttpStatus.CREATED).body(MessageResponseDto.success("리뷰 작성 성공"));
-		} catch (IllegalArgumentException e) {
-			log.error("리뷰 생성 실패: {}", e.getMessage());
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(MessageResponseDto.error(e.getMessage()));
-		} catch (Exception e) {
-			log.error("리뷰 생성 중 오류 발생", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MessageResponseDto.error("서버 내부 오류"));
+			// 상태 코드만 반환
+			return ResponseEntity.status(HttpStatus.CREATED).build();
+		} catch (ReviewInvalidContentException | ReviewInvalidRatingException | ReviewInvalidImageException
+				| ReviewForbiddenException e) {
+			log.warn("리뷰 생성 중 검증 오류 발생: {}", e.getMessage());
+			throw e;
 		}
 	}
 
-	@PatchMapping("/{review_id}")
-	public ResponseEntity<MessageResponseDto> updateReview(@PathVariable("review_id") Long reviewId,
-			@RequestBody ReviewUpdateDto updateDto, @RequestParam(required = false) Long userId) {
-
+	/**
+	 * 기존 리뷰를 수정합니다 (작성자만 수정 가능)
+	 * 
+	 * @param reviewId
+	 *            수정할 리뷰의 ID
+	 * @param updateDto
+	 *            수정할 내용 (평점, 리뷰내용, 이미지URL 등)
+	 * @return 수정 성공 시 201 Created 상태 코드 반환 (본문 없음)
+	 * @throws ReviewNotFoundException
+	 *             해당 ID의 리뷰가 없거나 삭제된 경우 발생
+	 * @throws ReviewForbiddenException
+	 *             작성자가 아닌 사용자가 수정을 시도할 경우 발생
+	 * @throws ReviewInvalidContentException
+	 *             리뷰 내용이 유효하지 않을 경우 발생
+	 * @throws ReviewInvalidRatingException
+	 *             평점이 유효하지 않을 경우 발생
+	 * @throws ReviewInvalidImageException
+	 *             이미지 URL이 유효하지 않을 경우 발생
+	 */
+	@PutMapping("/{review_id}")
+	public ResponseEntity<Void> updateReview(@PathVariable("review_id") Long reviewId,
+			@RequestBody ReviewUpdateDto updateDto) {
 		try {
-			// TODO: 임시로 사용자 ID를 파라미터로 받음 (실제로는 인증 정보에서 가져와야 함)
-			if (userId == null) {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(MessageResponseDto.error("인증이 필요합니다"));
-			}
-
-			reviewService.updateReview(reviewId, updateDto, userId);
-
-			return ResponseEntity.ok(MessageResponseDto.success("리뷰 수정 성공"));
-		} catch (IllegalArgumentException e) {
-			log.error("리뷰 수정 실패 (입력값 오류): {}", e.getMessage());
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(MessageResponseDto.error(e.getMessage()));
-		} catch (IllegalStateException e) {
-			log.error("리뷰 수정 실패 (권한 또는 존재 여부): {}", e.getMessage());
-
-			if (e.getMessage().contains("찾을 수 없습니다")) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponseDto.error(e.getMessage()));
-			} else {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(MessageResponseDto.error(e.getMessage()));
-			}
-		} catch (Exception e) {
-			log.error("리뷰 수정 중 오류 발생", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MessageResponseDto.error("서버 내부 오류"));
+			// 리뷰 수정
+			reviewService.updateReview(reviewId, updateDto);
+			return ResponseEntity.status(HttpStatus.CREATED).build();
+		} catch (ReviewInvalidContentException | ReviewInvalidRatingException | ReviewInvalidImageException e) {
+			log.warn("리뷰 수정 중 검증 오류 발생: {}", e.getMessage());
+			throw e;
+		} catch (ReviewNotFoundException e) {
+			log.warn("수정할 리뷰를 찾을 수 없음: {}", e.getMessage());
+			throw e;
+		} catch (ReviewForbiddenException e) {
+			log.warn("리뷰 수정 권한 없음: {}", e.getMessage());
+			throw e;
 		}
 	}
 
+	/**
+	 * 리뷰를 삭제합니다 (작성자만 삭제 가능, 소프트 삭제 방식)
+	 * 
+	 * @param reviewId
+	 *            삭제할 리뷰의 ID
+	 * @return 삭제 성공 시 204 No Content 상태 코드 반환 (본문 없음)
+	 * @throws ReviewNotFoundException
+	 *             해당 ID의 리뷰가 없거나 이미 삭제된 경우 발생
+	 * @throws ReviewForbiddenException
+	 *             작성자가 아닌 사용자가 삭제를 시도할 경우 발생
+	 */
 	@DeleteMapping("/{review_id}")
-	public ResponseEntity<MessageResponseDto> deleteReview(@PathVariable("review_id") Long reviewId,
-			@RequestParam(required = false) Long userId) {
-
+	public ResponseEntity<Void> deleteReview(@PathVariable("review_id") Long reviewId) {
 		try {
-			// TODO: 임시로 사용자 ID를 파라미터로 받음 (실제로는 인증 정보에서 가져와야 함)
-			if (userId == null) {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(MessageResponseDto.error("인증이 필요합니다"));
-			}
-
-			reviewService.deleteReview(reviewId, userId);
-
-			return ResponseEntity.ok(MessageResponseDto.success("리뷰 삭제 성공"));
-		} catch (IllegalStateException e) {
-			log.error("리뷰 삭제 실패: {}", e.getMessage());
-
-			if (e.getMessage().contains("찾을 수 없습니다")) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponseDto.error(e.getMessage()));
-			} else {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(MessageResponseDto.error(e.getMessage()));
-			}
-		} catch (Exception e) {
-			log.error("리뷰 삭제 중 오류 발생", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MessageResponseDto.error("서버 내부 오류"));
+			// 리뷰 삭제
+			reviewService.deleteReview(reviewId);
+			return ResponseEntity.noContent().build();
+		} catch (ReviewNotFoundException e) {
+			log.warn("삭제할 리뷰를 찾을 수 없음: {}", e.getMessage());
+			throw e;
+		} catch (ReviewForbiddenException e) {
+			log.warn("리뷰 삭제 권한 없음: {}", e.getMessage());
+			throw e;
 		}
 	}
 }

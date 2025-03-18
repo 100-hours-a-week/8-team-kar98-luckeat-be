@@ -35,6 +35,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/users/register").permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
+						.requestMatchers("/api/v1/reviews/**").authenticated()
 						.requestMatchers("/api/v1/categories", "/api/v1/categories/**").authenticated().anyRequest()
 						.authenticated())
 				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
