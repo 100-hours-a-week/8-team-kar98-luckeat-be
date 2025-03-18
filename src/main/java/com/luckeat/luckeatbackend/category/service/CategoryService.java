@@ -27,17 +27,14 @@ public class CategoryService {
 	}
 
 	public Optional<Category> getCategoryById(Long id) {
-		// 소프트 삭제된 카테고리는 제외
-		return categoryRepository.findByIdAndDeletedAtIsNull(id);
+		return categoryRepository.findById(id);
 	}
 
 	@Transactional
 	public Category saveCategory(Category category) {
-
 		// 카테고리 이름 중복 검사 추가
 		if (categoryRepository.existsByCategoryNameAndDeletedAtIsNull(category.getCategoryName())) {
 			throw new CategoryNameDuplicateException();
-
 		}
 
 		// 카테고리 이름 유효성 검사 추가
