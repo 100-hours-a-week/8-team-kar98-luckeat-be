@@ -1,6 +1,8 @@
 package com.luckeat.luckeatbackend.common.exception;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -50,10 +53,33 @@ public class GlobalExceptionHandler {
 	}
 
 	// 유효성 검사 예외 처리
-	@ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
-	public ResponseEntity<ErrorResponse> handleValidationException(Exception e) {
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ValidationErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
 		log.error("ValidationException: {}", e.getMessage());
-		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST));
+		Map<String, String> errors = new HashMap<>();
+		
+		e.getBindingResult().getAllErrors().forEach(error -> {
+			String fieldName = ((FieldError) error).getField();
+			String errorMessage = error.getDefaultMessage();
+			errors.put(fieldName, errorMessage);
+		});
+		
+		return ResponseEntity.status(400).body(new ValidationErrorResponse(ErrorCode.VALIDATION_ERROR, errors));
+	}
+	
+	// 바인딩 예외 처리
+	@ExceptionHandler(BindException.class)
+	public ResponseEntity<ValidationErrorResponse> handleBindException(BindException e) {
+		log.error("BindException: {}", e.getMessage());
+		Map<String, String> errors = new HashMap<>();
+		
+		e.getBindingResult().getAllErrors().forEach(error -> {
+			String fieldName = ((FieldError) error).getField();
+			String errorMessage = error.getDefaultMessage();
+			errors.put(fieldName, errorMessage);
+		});
+		
+		return ResponseEntity.status(400).body(new ValidationErrorResponse(ErrorCode.VALIDATION_ERROR, errors));
 	}
 
 	// 잘못된 요청 파라미터 타입 예외 처리

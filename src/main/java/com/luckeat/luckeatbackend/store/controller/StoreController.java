@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,11 +20,13 @@ import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
 import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.service.StoreService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/stores")
 @RequiredArgsConstructor
+@Validated
 public class StoreController {
 
 	private final StoreService storeService;
@@ -43,14 +46,16 @@ public class StoreController {
 	}
 
 	@PostMapping
-	public ResponseEntity<StoreResponseDto> createStore(@RequestBody StoreRequestDto storeRequest) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(storeService.createStore(storeRequest));
+	public ResponseEntity<Void> createStore(@Valid @RequestBody StoreRequestDto storeRequest) {
+		storeService.createStore(storeRequest);
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 
 	@PutMapping("/{store_id}")
-	public ResponseEntity<StoreResponseDto> updateStore(@PathVariable("store_id") Long storeId,
-			@RequestBody StoreRequestDto storeRequest) {
-		return ResponseEntity.ok(storeService.updateStore(storeId, storeRequest));
+	public ResponseEntity<Void> updateStore(@PathVariable("store_id") Long storeId,
+			@Valid @RequestBody StoreRequestDto storeRequest) {
+		storeService.updateStore(storeId, storeRequest);
+		return ResponseEntity.ok().build();
 	}
 
 	@DeleteMapping("/{store_id}")

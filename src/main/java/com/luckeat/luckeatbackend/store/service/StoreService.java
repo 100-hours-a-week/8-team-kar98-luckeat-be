@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidBusinessHou
 import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidDescriptionException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidPhoneNumberException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
+import com.luckeat.luckeatbackend.common.exception.store.StoreUnauthenticatedException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.repository.ProductRepository;
 import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
@@ -23,9 +25,14 @@ import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
 import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
+import com.luckeat.luckeatbackend.users.repository.UserRepository;
+import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
+import com.luckeat.luckeatbackend.users.model.User;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -33,6 +40,7 @@ public class StoreService {
 
 	private final StoreRepository storeRepository;
 	private final ProductRepository productRepository;
+	private final UserRepository userRepository;
 
 	public List<StoreResponseDto> getAllStores() {
 		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
@@ -66,28 +74,26 @@ public class StoreService {
 	}
 
 	@Transactional
-	public StoreResponseDto createStore(StoreRequestDto request) {
-		// 현재 인증된 사용자 정보 가져오기
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		Long userId = Long.parseLong(authentication.getName());
+	public void createStore(StoreRequestDto request) {
+		// 현재 인증된 사용자 ID 가져오기
+		Long userId = getCurrentUserId();
 
 		// 유효성 검사 추가
 		validateStoreData(request);
 
 		Store store = request.toEntity(userId);
-		Store savedStore = storeRepository.save(store);
-		return StoreResponseDto.fromEntity(savedStore);
+		storeRepository.save(store);
 	}
 
 	@Transactional
-	public StoreResponseDto updateStore(Long storeId, StoreRequestDto request) {
+	public void updateStore(Long storeId, StoreRequestDto request) {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
 
-		// 권한 확인
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		Long userId = Long.parseLong(authentication.getName());
+		// 현재 인증된 사용자 ID 가져오기
+		Long userId = getCurrentUserId();
 
+		// 권한 확인
 		if (!store.getUserId().equals(userId)) {
 			throw new StoreForbiddenException("해당 가게에 대한 수정 권한이 없습니다.");
 		}
@@ -100,7 +106,7 @@ public class StoreService {
 		updatedStore.setId(storeId);
 		updatedStore.setShareCount(store.getShareCount()); // 공유 카운트 유지
 
-		return StoreResponseDto.fromEntity(storeRepository.save(updatedStore));
+		storeRepository.save(updatedStore);
 	}
 
 	@Transactional
@@ -108,10 +114,10 @@ public class StoreService {
 		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
 
-		// 권한 확인
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		Long userId = Long.parseLong(authentication.getName());
+		// 현재 인증된 사용자 ID 가져오기
+		Long userId = getCurrentUserId();
 
+		// 권한 확인
 		if (!store.getUserId().equals(userId)) {
 			throw new StoreForbiddenException("해당 가게에 대한 삭제 권한이 없습니다.");
 		}
@@ -233,6 +239,7 @@ public class StoreService {
 				break;
 		}
 	}
+<<<<<<< Updated upstream
 
 	/**
 	 * 가게 데이터 유효성 검사 메서드
@@ -302,5 +309,22 @@ public class StoreService {
 		if (description.length() < 5 || description.length() > 500) {
 			throw new StoreInvalidDescriptionException();
 		}
+=======
+	
+	// 현재 인증된 사용자 ID 가져오기
+	private Long getCurrentUserId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+		if (authentication == null || !authentication.isAuthenticated()
+            || authentication instanceof AnonymousAuthenticationToken) {
+			log.error("인증되지 않은 사용자 접근: {}", authentication);
+			throw new StoreUnauthenticatedException();
+		}
+
+		// 이메일로 사용자 조회하여 ID 반환
+		String email = authentication.getName();
+		return userRepository.findByEmailAndDeletedAtIsNull(email)
+				.orElseThrow(() -> new UserNotFoundException()).getId();
+>>>>>>> Stashed changes
 	}
 }
