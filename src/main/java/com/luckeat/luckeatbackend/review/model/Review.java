@@ -26,7 +26,4 @@ public class Review extends BaseEntity {
 	@Column(name = "review_image", columnDefinition = "TEXT")
 	private String reviewImage;
 
-	@Column(name = "is_delete", nullable = false)
-	private Boolean isDelete = false;
-
 }
