@@ -1,7 +1,7 @@
 package com.luckeat.luckeatbackend.common.exception.review;
 
 import com.luckeat.luckeatbackend.common.exception.ErrorCode;
-import com.luckeat.luckeatbackend.common.exception.base.NotFoundException;
+import com.luckeat.luckeatbackend.common.exception.base.CustomException;
 
 public class ReviewNotFoundException extends CustomException {
 	public ReviewNotFoundException() {
