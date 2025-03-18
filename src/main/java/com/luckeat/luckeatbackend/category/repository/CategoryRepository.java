@@ -9,6 +9,6 @@ import com.luckeat.luckeatbackend.category.model.Category;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-	boolean existsByNameAndDeletedFalse(String name);
-	List<Category> findByDeletedFalse();
+	boolean existsByCategoryNameAndDeletedAtIsNull(String name);
+	List<Category> findByDeletedAtIsNull();
 }
