@@ -38,7 +38,7 @@ public class StoreController {
 	}
 
 	@GetMapping("/{store_id}")
-	public ResponseEntity<StoreDetailResponseDto> getStoreDetailById(@PathVariable("storeId") Long storeId) {
+	public ResponseEntity<StoreDetailResponseDto> getStoreDetailById(@PathVariable("store_id") Long storeId) {
 		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
 
@@ -48,20 +48,19 @@ public class StoreController {
 	}
 
 	@PutMapping("/{store_id}")
-	public ResponseEntity<StoreResponseDto> updateStore(@PathVariable("storeId") Long storeId,
+	public ResponseEntity<StoreResponseDto> updateStore(@PathVariable("store_id") Long storeId,
 			@RequestBody StoreRequestDto storeRequest) {
 		return ResponseEntity.ok(storeService.updateStore(storeId, storeRequest));
 	}
 
 	@DeleteMapping("/{store_id}")
-	public ResponseEntity<Void> deleteStore(@PathVariable("storeId") Long storeId) {
+	public ResponseEntity<Void> deleteStore(@PathVariable("store_id") Long storeId) {
 		storeService.deleteStore(storeId);
 		return ResponseEntity.noContent().build();
 	}
 
-	// TODO: 공유횟수 증가 엔드포인트는 필요한가??
 	@PostMapping("/{store_id}/share")
-	public ResponseEntity<Void> incrementShareCount(@PathVariable("storeId") Long storeId) {
+	public ResponseEntity<Void> incrementShareCount(@PathVariable("store_id") Long storeId) {
 		storeService.incrementShareCount(storeId);
 		return ResponseEntity.ok().build();
 	}

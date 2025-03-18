@@ -146,8 +146,9 @@ public class StoreService {
 		// 2. 가게명 검색 필터링 (storeName 파라미터가 존재하고 비어있지 않은 경우)
 		// - 대소문자 구분 없이 가게 이름에 검색어가 포함된 가게들만 필터링
 		if (storeName != null && !storeName.trim().isEmpty()) {
+			String searchTerm = storeName.trim().toLowerCase();
 			stores = stores.stream()
-					.filter(store -> store.getStoreName().toLowerCase().contains(storeName.toLowerCase()))
+					.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
 					.collect(Collectors.toList());
 		}
 
@@ -165,13 +166,15 @@ public class StoreService {
 			stores = filterByDistance(stores, lat, lng, radius);
 		}
 
-		// 5. 마감할인 중인 가게만 필터링 (isDiscountOpen 파라미터가 true인 경우)
-		// - 가게의 상품 중 마감 할인 중(is_open=true)인 상품이 하나 이상 있는 가게만 필터링
-		if (isDiscountOpen != null && isDiscountOpen) {
+		// 5. 마감할인 필터링
+		// - isDiscountOpen=true인 경우: 마감할인 중인 가게만 표시
+		// - isDiscountOpen=false인 경우: 마감할인 중이 아닌 가게만 표시
+		if (isDiscountOpen != null) {
 			stores = stores.stream().filter(store -> {
 				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품 개수 확인
 				long openProductCount = productRepository.countByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
-				return openProductCount > 0; // 마감 할인 중인 상품이 하나라도 있으면 true 반환
+				// isDiscountOpen이 true면 마감할인 중인 가게만, false면 마감할인 중이 아닌 가게만 반환
+				return isDiscountOpen ? openProductCount > 0 : openProductCount == 0;
 			}).collect(Collectors.toList());
 		}
 
