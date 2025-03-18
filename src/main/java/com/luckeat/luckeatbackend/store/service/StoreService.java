@@ -253,11 +253,11 @@ public class StoreService {
 	 */
 	private void validateAddress(String address) {
 		if (address == null || address.trim().isEmpty()) {
-			throw new StoreInvalidAddressException("가게 주소는 필수 입력 항목입니다.");
+			throw new StoreInvalidAddressException();
 		}
 		
 		if (address.length() < 5 || address.length() > 100) {
-			throw new StoreInvalidAddressException("가게 주소는 5자 이상 100자 이하로 입력해야 합니다.");
+			throw new StoreInvalidAddressException();
 		}
 	}
 
@@ -268,12 +268,12 @@ public class StoreService {
 	 */
 	private void validatePhoneNumber(String phoneNumber) {
 		if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-			throw new StoreInvalidPhoneNumberException("가게 전화번호는 필수 입력 항목입니다.");
+			throw new StoreInvalidPhoneNumberException();
 		}
 		
 		// 전화번호 형식 검사 (XXX-XXXX-XXXX 또는 XX-XXXX-XXXX 형식)
 		if (!phoneNumber.matches("^\\d{2,3}-\\d{3,4}-\\d{4}$")) {
-			throw new StoreInvalidPhoneNumberException("가게 전화번호는 XXX-XXXX-XXXX 또는 XX-XXXX-XXXX 형식이어야 합니다.");
+			throw new StoreInvalidPhoneNumberException();
 		}
 	}
 
@@ -285,7 +285,7 @@ public class StoreService {
 	 */
 	private void validateBusinessHours(LocalTime weekdayCloseTime, LocalTime weekendCloseTime) {
 		if (weekdayCloseTime == null || weekendCloseTime == null) {
-			throw new StoreInvalidBusinessHoursException("가게 영업시간은 필수 입력 항목입니다.");
+			throw new StoreInvalidBusinessHoursException();
 		}
 	}
 
@@ -296,11 +296,11 @@ public class StoreService {
 	 */
 	private void validateDescription(String description) {
 		if (description == null || description.trim().isEmpty()) {
-			throw new StoreInvalidDescriptionException("가게 설명은 필수 입력 항목입니다.");
+			throw new StoreInvalidDescriptionException();
 		}
 		
 		if (description.length() < 5 || description.length() > 500) {
-			throw new StoreInvalidDescriptionException("가게 설명은 5자 이상 500자 이하로 입력해야 합니다.");
+			throw new StoreInvalidDescriptionException();
 		}
 	}
 }
