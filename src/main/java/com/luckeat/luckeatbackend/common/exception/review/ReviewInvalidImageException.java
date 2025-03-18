@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.review;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class ReviewInvalidImageException extends BadRequestException {
 	public ReviewInvalidImageException() {
-		super("올바른 이미지 형식이 아닙니다");
+		super(ErrorCode.REVIEW_INVALID_IMAGE, ErrorCode.REVIEW_INVALID_IMAGE.getMessage());
 	}
 
 	public ReviewInvalidImageException(String message) {
-		super(message);
+		super(ErrorCode.REVIEW_INVALID_IMAGE, message);
 	}
 }

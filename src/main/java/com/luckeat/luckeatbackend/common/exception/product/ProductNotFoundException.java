@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.product;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.NotFoundException;
 
 public class ProductNotFoundException extends NotFoundException {
 	public ProductNotFoundException() {
-		super("상품 정보 없음");
+		super(ErrorCode.PRODUCT_NOT_FOUND, ErrorCode.PRODUCT_NOT_FOUND.getMessage());
 	}
 
 	public ProductNotFoundException(String message) {
-		super(message);
+		super(ErrorCode.PRODUCT_NOT_FOUND, message);
 	}
 }

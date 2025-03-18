@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.product;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class ProductInvalidPriceException extends BadRequestException {
 	public ProductInvalidPriceException() {
-		super("올바른 상품 가격 형식이 아닙니다");
+		super(ErrorCode.PRODUCT_INVALID_PRICE, ErrorCode.PRODUCT_INVALID_PRICE.getMessage());
 	}
 
 	public ProductInvalidPriceException(String message) {
-		super(message);
+		super(ErrorCode.PRODUCT_INVALID_PRICE, message);
 	}
 }

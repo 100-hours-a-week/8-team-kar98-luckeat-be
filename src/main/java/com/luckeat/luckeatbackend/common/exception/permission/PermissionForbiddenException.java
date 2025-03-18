@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.permission;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.ForbiddenException;
 
 public class PermissionForbiddenException extends ForbiddenException {
 	public PermissionForbiddenException() {
-		super("리뷰 작성 권한이 없음");
+		super(ErrorCode.PERMISSION_FORBIDDEN, ErrorCode.PERMISSION_FORBIDDEN.getMessage());
 	}
 
 	public PermissionForbiddenException(String message) {
-		super(message);
+		super(ErrorCode.PERMISSION_FORBIDDEN, message);
 	}
 }

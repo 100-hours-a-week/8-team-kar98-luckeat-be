@@ -1,11 +1,13 @@
 package com.luckeat.luckeatbackend.common.exception.base;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
+
 public class ValidationException extends BadRequestException {
 	public ValidationException() {
-		super("유효성 검사 실패");
+		super(ErrorCode.VALIDATION_ERROR, ErrorCode.VALIDATION_ERROR.getMessage());
 	}
 
 	public ValidationException(String message) {
-		super(message);
+		super(ErrorCode.VALIDATION_ERROR, message);
 	}
 }

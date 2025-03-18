@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.store;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.ForbiddenException;
 
 public class StoreForbiddenException extends ForbiddenException {
 	public StoreForbiddenException() {
-		super("가게 접근 권한 없음");
+		super(ErrorCode.STORE_FORBIDDEN, ErrorCode.STORE_FORBIDDEN.getMessage());
 	}
 
 	public StoreForbiddenException(String message) {
-		super(message);
+		super(ErrorCode.STORE_FORBIDDEN, message);
 	}
 }

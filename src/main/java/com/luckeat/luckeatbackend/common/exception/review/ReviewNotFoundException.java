@@ -5,7 +5,7 @@ import com.luckeat.luckeatbackend.common.exception.base.CustomException;
 
 public class ReviewNotFoundException extends CustomException {
 	public ReviewNotFoundException() {
-		super(ErrorCode.REVIEW_NOT_FOUND);
+		super(ErrorCode.REVIEW_NOT_FOUND, ErrorCode.REVIEW_NOT_FOUND.getMessage());
 	}
 
 	public ReviewNotFoundException(String message) {

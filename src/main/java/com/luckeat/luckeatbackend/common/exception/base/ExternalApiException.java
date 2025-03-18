@@ -1,11 +1,16 @@
 package com.luckeat.luckeatbackend.common.exception.base;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
+
+import lombok.Getter;
+@Getter
 public class ExternalApiException extends InternalServerErrorException {
 	public ExternalApiException() {
-		super("외부 API 호출 실패");
+		super(ErrorCode.EXTERNAL_API_ERROR, ErrorCode.EXTERNAL_API_ERROR.getMessage());
 	}
 
 	public ExternalApiException(String message) {
-		super(message);
+		super(ErrorCode.EXTERNAL_API_ERROR, message);
 	}
+
 }
