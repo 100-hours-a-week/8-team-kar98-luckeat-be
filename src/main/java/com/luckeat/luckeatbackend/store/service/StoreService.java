@@ -138,25 +138,18 @@ public class StoreService {
 
 	/**
 	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드
-	 * 
-	 * @param categoryId
-	 *            카테고리 ID (선택적)
-	 * @param lat
-	 *            위도 (선택적)
-	 * @param lng
-	 *            경도 (선택적)
-	 * @param radius
-	 *            검색 반경 (km) (선택적)
-	 * @param sort
-	 *            정렬 기준 (distance: 거리순, share: 공유순) (선택적)
-	 * @param storeName
-	 *            가게 이름 검색어 (선택적)
-	 * @param isDiscountOpen
-	 *            마감 할인 중인 가게만 필터링 (선택적)
+	 *
+	 * @param categoryId     카테고리 ID (선택적)
+	 * @param lat            위도 (선택적)
+	 * @param lng            경도 (선택적)
+	 * @param radius         검색 반경 (km) (선택적)
+	 * @param sort           정렬 기준 (distance: 거리순, share: 공유순) (선택적)
+	 * @param storeName      가게 이름 검색어 (선택적)
+	 * @param isDiscountOpen 마감 할인 중인 가게만 필터링 (선택적)
 	 * @return 필터링 및 정렬된 가게 목록 DTO
 	 */
 	public List<StoreResponseDto> getStores(Long categoryId, Double lat, Double lng, Double radius, String sort,
-			String storeName, Boolean isDiscountOpen) {
+											String storeName, Boolean isDiscountOpen) {
 		// 1. 기본적으로 삭제되지 않은 모든 가게 조회 (deletedAt이 null인 가게들)
 		List<Store> stores = storeRepository.findAllByDeletedAtIsNull();
 
@@ -225,25 +218,24 @@ public class StoreService {
 	// 정렬 메소드
 	private void sortStores(List<Store> stores, String sort, Double lat, Double lng) {
 		switch (sort) {
-			case "distance" :
+			case "distance":
 				if (lat != null && lng != null) {
 					stores.sort(Comparator.comparingDouble(
 							store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
 				}
 				break;
-			case "share" :
+			case "share":
 				stores.sort(Comparator.comparing(Store::getShareCount).reversed());
 				break;
-			default :
+			default:
 				// 기본 정렬 또는 다른 정렬 옵션
 				break;
 		}
 	}
-<<<<<<< Updated upstream
 
 	/**
 	 * 가게 데이터 유효성 검사 메서드
-	 * 
+	 *
 	 * @param request 가게 요청 DTO
 	 */
 	private void validateStoreData(StoreRequestDto request) {
@@ -255,14 +247,14 @@ public class StoreService {
 
 	/**
 	 * 가게 주소 유효성 검사
-	 * 
+	 *
 	 * @param address 가게 주소
 	 */
 	private void validateAddress(String address) {
 		if (address == null || address.trim().isEmpty()) {
 			throw new StoreInvalidAddressException();
 		}
-		
+
 		if (address.length() < 5 || address.length() > 100) {
 			throw new StoreInvalidAddressException();
 		}
@@ -270,14 +262,14 @@ public class StoreService {
 
 	/**
 	 * 가게 전화번호 유효성 검사
-	 * 
+	 *
 	 * @param phoneNumber 가게 전화번호
 	 */
 	private void validatePhoneNumber(String phoneNumber) {
 		if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
 			throw new StoreInvalidPhoneNumberException();
 		}
-		
+
 		// 전화번호 형식 검사 (XXX-XXXX-XXXX 또는 XX-XXXX-XXXX 형식)
 		if (!phoneNumber.matches("^\\d{2,3}-\\d{3,4}-\\d{4}$")) {
 			throw new StoreInvalidPhoneNumberException();
@@ -286,7 +278,7 @@ public class StoreService {
 
 	/**
 	 * 가게 영업시간 유효성 검사
-	 * 
+	 *
 	 * @param weekdayCloseTime 평일 마감시간
 	 * @param weekendCloseTime 주말 마감시간
 	 */
@@ -298,25 +290,29 @@ public class StoreService {
 
 	/**
 	 * 가게 설명 유효성 검사
-	 * 
+	 *
 	 * @param description 가게 설명
 	 */
 	private void validateDescription(String description) {
 		if (description == null || description.trim().isEmpty()) {
 			throw new StoreInvalidDescriptionException();
 		}
-		
+
 		if (description.length() < 5 || description.length() > 500) {
 			throw new StoreInvalidDescriptionException();
 		}
-=======
-	
-	// 현재 인증된 사용자 ID 가져오기
+	}
+
+	/**
+	 * 현재 인증된 사용자의 ID를 가져오는 메소드
+	 * 
+	 * @return 인증된 사용자의 ID
+	 */
 	private Long getCurrentUserId() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
 		if (authentication == null || !authentication.isAuthenticated()
-            || authentication instanceof AnonymousAuthenticationToken) {
+				|| authentication instanceof AnonymousAuthenticationToken) {
 			log.error("인증되지 않은 사용자 접근: {}", authentication);
 			throw new StoreUnauthenticatedException();
 		}
@@ -325,6 +321,5 @@ public class StoreService {
 		String email = authentication.getName();
 		return userRepository.findByEmailAndDeletedAtIsNull(email)
 				.orElseThrow(() -> new UserNotFoundException()).getId();
->>>>>>> Stashed changes
 	}
 }
