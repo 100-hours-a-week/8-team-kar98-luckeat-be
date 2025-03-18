@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.user;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.ConflictException;
 
 public class EmailDuplicateException extends ConflictException {
 	public EmailDuplicateException() {
-		super("이메일 중복");
+		super(ErrorCode.EMAIL_DUPLICATE, ErrorCode.EMAIL_DUPLICATE.getMessage());
 	}
 
 	public EmailDuplicateException(String message) {
-		super(message);
+		super(ErrorCode.EMAIL_DUPLICATE, message);
 	}
 }

@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.permission;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class PermissionInvalidRoleException extends BadRequestException {
 	public PermissionInvalidRoleException() {
-		super("올바른 권한 역할이 아닙니다");
+		super(ErrorCode.PERMISSION_INVALID_ROLE, ErrorCode.PERMISSION_INVALID_ROLE.getMessage());
 	}
 
 	public PermissionInvalidRoleException(String message) {
-		super(message);
+		super(ErrorCode.PERMISSION_INVALID_ROLE, message);
 	}
 }

@@ -1,13 +1,14 @@
 package com.luckeat.luckeatbackend.common.exception.store;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
 import com.luckeat.luckeatbackend.common.exception.base.BadRequestException;
 
 public class StoreInvalidDescriptionException extends BadRequestException {
 	public StoreInvalidDescriptionException() {
-		super("올바른 가게 설명 형식이 아닙니다");
+		super(ErrorCode.STORE_INVALID_DESCRIPTION, ErrorCode.STORE_INVALID_DESCRIPTION.getMessage());
 	}
 
 	public StoreInvalidDescriptionException(String message) {
-		super(message);
+		super(ErrorCode.STORE_INVALID_DESCRIPTION, message);
 	}
 }

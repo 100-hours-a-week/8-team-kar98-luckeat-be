@@ -1,11 +1,13 @@
 package com.luckeat.luckeatbackend.common.exception.base;
 
+import com.luckeat.luckeatbackend.common.exception.ErrorCode;
+
 public class FileUploadException extends BadRequestException {
-	public FileUploadException() {
-		super("파일 업로드 실패");
+	public FileUploadException(String message) {
+		super(ErrorCode.FILE_UPLOAD_ERROR, message);
 	}
 
-	public FileUploadException(String message) {
-		super(message);
+	public FileUploadException() {
+		super(ErrorCode.FILE_UPLOAD_ERROR, ErrorCode.FILE_UPLOAD_ERROR.getMessage());
 	}
 }
