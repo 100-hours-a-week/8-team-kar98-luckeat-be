@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.store.service;
 
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -10,6 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.luckeat.luckeatbackend.common.exception.store.StoreForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidAddressException;
+import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidBusinessHoursException;
+import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidDescriptionException;
+import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidPhoneNumberException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.repository.ProductRepository;
@@ -66,6 +71,9 @@ public class StoreService {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		Long userId = Long.parseLong(authentication.getName());
 
+		// 유효성 검사 추가
+		validateStoreData(request);
+
 		Store store = request.toEntity(userId);
 		Store savedStore = storeRepository.save(store);
 		return StoreResponseDto.fromEntity(savedStore);
@@ -83,6 +91,9 @@ public class StoreService {
 		if (!store.getUserId().equals(userId)) {
 			throw new StoreForbiddenException("해당 가게에 대한 수정 권한이 없습니다.");
 		}
+
+		// 유효성 검사 추가
+		validateStoreData(request);
 
 		// 기존 ID와 사용자 ID 유지
 		Store updatedStore = request.toEntity(userId);
@@ -220,6 +231,76 @@ public class StoreService {
 			default :
 				// 기본 정렬 또는 다른 정렬 옵션
 				break;
+		}
+	}
+
+	/**
+	 * 가게 데이터 유효성 검사 메서드
+	 * 
+	 * @param request 가게 요청 DTO
+	 */
+	private void validateStoreData(StoreRequestDto request) {
+		validateAddress(request.getAddress());
+		validatePhoneNumber(request.getContactNumber());
+		validateBusinessHours(request.getWeekdayCloseTime(), request.getWeekendCloseTime());
+		validateDescription(request.getDescription());
+	}
+
+	/**
+	 * 가게 주소 유효성 검사
+	 * 
+	 * @param address 가게 주소
+	 */
+	private void validateAddress(String address) {
+		if (address == null || address.trim().isEmpty()) {
+			throw new StoreInvalidAddressException("가게 주소는 필수 입력 항목입니다.");
+		}
+		
+		if (address.length() < 5 || address.length() > 100) {
+			throw new StoreInvalidAddressException("가게 주소는 5자 이상 100자 이하로 입력해야 합니다.");
+		}
+	}
+
+	/**
+	 * 가게 전화번호 유효성 검사
+	 * 
+	 * @param phoneNumber 가게 전화번호
+	 */
+	private void validatePhoneNumber(String phoneNumber) {
+		if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+			throw new StoreInvalidPhoneNumberException("가게 전화번호는 필수 입력 항목입니다.");
+		}
+		
+		// 전화번호 형식 검사 (XXX-XXXX-XXXX 또는 XX-XXXX-XXXX 형식)
+		if (!phoneNumber.matches("^\\d{2,3}-\\d{3,4}-\\d{4}$")) {
+			throw new StoreInvalidPhoneNumberException("가게 전화번호는 XXX-XXXX-XXXX 또는 XX-XXXX-XXXX 형식이어야 합니다.");
+		}
+	}
+
+	/**
+	 * 가게 영업시간 유효성 검사
+	 * 
+	 * @param weekdayCloseTime 평일 마감시간
+	 * @param weekendCloseTime 주말 마감시간
+	 */
+	private void validateBusinessHours(LocalTime weekdayCloseTime, LocalTime weekendCloseTime) {
+		if (weekdayCloseTime == null || weekendCloseTime == null) {
+			throw new StoreInvalidBusinessHoursException("가게 영업시간은 필수 입력 항목입니다.");
+		}
+	}
+
+	/**
+	 * 가게 설명 유효성 검사
+	 * 
+	 * @param description 가게 설명
+	 */
+	private void validateDescription(String description) {
+		if (description == null || description.trim().isEmpty()) {
+			throw new StoreInvalidDescriptionException("가게 설명은 필수 입력 항목입니다.");
+		}
+		
+		if (description.length() < 5 || description.length() > 500) {
+			throw new StoreInvalidDescriptionException("가게 설명은 5자 이상 500자 이하로 입력해야 합니다.");
 		}
 	}
 }
