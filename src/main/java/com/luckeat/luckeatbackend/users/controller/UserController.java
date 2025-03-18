@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.luckeat.luckeatbackend.users.dto.LoginRequestDto;
 import com.luckeat.luckeatbackend.users.dto.LoginResponseDto;
+import com.luckeat.luckeatbackend.users.dto.NicknameUpdateDto;
+import com.luckeat.luckeatbackend.users.dto.PasswordUpdateDto;
+import com.luckeat.luckeatbackend.users.dto.UserInfoResponseDto;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 
@@ -66,8 +69,17 @@ public class UserController {
 
 	// 닉네임 중복 확인
 	@GetMapping("/nicknameValid")
-	public ResponseEntity<Boolean> checkNicknameValidity(@RequestParam String nickname) {
-		return ResponseEntity.ok(!userService.existsByNickname(nickname));
+	public ResponseEntity<?> checkNicknameValidity(@RequestParam String nickname) {
+		// 닉네임이 이미 존재하는지 확인
+		boolean nicknameExists = userService.existsByNickname(nickname);
+
+		if (nicknameExists) {
+			// 닉네임이 중복되면 200 OK 응답
+			return ResponseEntity.ok().build();
+		} else {
+			// 닉네임이 존재하지 않으면 401 Unauthorized 응답
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
 	}
 
 	// 로그아웃
@@ -76,36 +88,60 @@ public class UserController {
 		return ResponseEntity.ok("User logged out successfully.");
 	}
 
-	// 회원 정보 조회
+	@GetMapping("/emailValid")
+	public ResponseEntity<?> checkEmailValidity(@RequestParam String email) {
+		// 이메일이 이미 존재하는지 확인
+		boolean emailExists = userService.existsByEmail(email);
+
+		if (emailExists) {
+			// 이메일이 중복되면 200 OK 응답
+			return ResponseEntity.ok().build();
+		} else {
+			// 이메일이 존재하지 않으면 401 Unauthorized 응답
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+	}
+
 	@GetMapping("/me")
-	public ResponseEntity<?> getMyInfo(@RequestParam Long userId) {
-		return userService.getUserById(userId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<UserInfoResponseDto> getCurrentUser() {
+		try {
+			UserInfoResponseDto response = userService.getCurrentUserInfo();
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
 	}
 
 	@PatchMapping("/nickname")
-	public ResponseEntity<?> updateUser(@PathVariable Long userId, @RequestBody User user) {
-		return userService.getUserById(userId).map(existingUser -> {
-			user.setId(userId);
-			return ResponseEntity.ok(userService.updateUser(user));
-		}).orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<?> updateNickname(@RequestBody NicknameUpdateDto nicknameDto) {
+		try {
+			// 서비스에서 JWT 토큰으로부터 사용자 ID를 가져옴
+			userService.updateNickname(nicknameDto);
+			return ResponseEntity.ok().build();
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 
 	// 비밀번호 수정
 	@PatchMapping("/password")
-	public ResponseEntity<?> updatePassword(@RequestParam Long userId, @RequestBody User user) {
-		return userService.getUserById(userId).map(existingUser -> {
-			existingUser.setPassword(user.getPassword());
-			return ResponseEntity.ok(userService.updateUser(existingUser));
-		}).orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<?> updatePassword(@RequestBody PasswordUpdateDto passwordDto) {
+		try {
+			// 서비스에서 JWT 토큰으로부터 사용자 ID를 가져옴
+			userService.updatePassword(passwordDto);
+			return ResponseEntity.ok().build();
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
-
 	// 회원 삭제
 	@DeleteMapping
-	public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
-		// TODO: 소프트 삭제로 바꾸기
-		return userService.getUserById(userId).map(user -> {
-			userService.deleteUser(userId);
-			return ResponseEntity.noContent().<Void>build();
-		}).orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<Void> deleteCurrentUser() {
+		try {
+			userService.deleteCurrentUser();
+			return ResponseEntity.noContent().build();
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().build();
+		}
 	}
 }
