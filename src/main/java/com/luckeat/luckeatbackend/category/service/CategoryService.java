@@ -23,7 +23,7 @@ public class CategoryService {
 
 	public List<Category> getAllCategories() {
 		// 삭제된 카테고리는 보여주지 않도록 수정
-		return categoryRepository.findByDeletedFalse();
+		return categoryRepository.findByDeletedAtIsNull();
 	}
 
 	public Optional<Category> getCategoryById(Long id) {
@@ -33,7 +33,7 @@ public class CategoryService {
 	@Transactional
 	public Category saveCategory(Category category) {
 		// 카테고리 이름 중복 검사 추가
-		if (categoryRepository.existsByNameAndDeletedFalse(category.getCategoryName())) {
+		if (categoryRepository.existsByCategoryNameAndDeletedAtIsNull(category.getCategoryName())) {
 			throw new CategoryNameDuplicateException();
 		}
 
