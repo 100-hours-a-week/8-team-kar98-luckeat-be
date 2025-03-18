@@ -62,7 +62,7 @@ public class ReviewService {
 	}
 
 	public List<ReviewResponseDto> getReviewsByProduct(Product product) {
-		return reviewRepository.findByStoreIdAndDeletedAtIsNull(product.getStoreId()).stream()
+		return reviewRepository.findByStoreIdAndDeletedAtIsNull(product.getStore().getId()).stream()
 				.map(ReviewResponseDto::fromEntity).collect(Collectors.toList());
 	}
 

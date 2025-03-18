@@ -47,8 +47,4 @@ public class Product extends BaseEntity {
 	@Builder.Default
 	private Boolean isOpen = false;
 
-	public Long getStoreId() {
-		return store.getId();
-		// 코비
-	}
 }
