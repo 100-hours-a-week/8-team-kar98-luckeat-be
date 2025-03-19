@@ -11,10 +11,16 @@ public enum ErrorCode {
 			"리소스를 찾을 수 없음"), CONFLICT(409, "리소스 충돌"), INTERNAL_SERVER_ERROR(500, "서버 오류"), DATABASE_ERROR(500,
 					"데이터베이스 오류"), FILE_UPLOAD_ERROR(500,
 							"파일 업로드 오류"), VALIDATION_ERROR(400, "유효성 검사 실패"), EXTERNAL_API_ERROR(500, "외부 API 호출 실패"),
+	METHOD_NOT_ALLOWED(405, "지원하지 않는 HTTP 메소드입니다"),
 	// 사용자 관련 에러
 	USER_NOT_FOUND(404, "사용자 정보 없음"), EMAIL_DUPLICATE(409, "이메일 중복"), NICKNAME_DUPLICATE(409,
 			"닉네임 중복"), USER_INVALID_EMAIL(400, "올바른 이메일 형식이 아닙니다"), USER_INVALID_NICKNAME(400,
 					"올바른 닉네임 형식이 아닙니다"), USER_INVALID_PASSWORD(400, "비밀번호가 일치하지 않습니다"),
+	// 추가된 사용자 관련 에러
+	INVALID_ROLE(400, "역할은 ADMIN, BUYER, SELLER 중 하나여야 합니다"),
+	UNAUTHENTICATED(401, "인증되지 않은 사용자입니다"),
+	WRONG_PASSWORD(400, "비밀번호가 일치하지 않습니다"),
+					
 	// 가게 관련 에러
 	STORE_NOT_FOUND(404, "가게 정보 없음"), STORE_FORBIDDEN(403, "가게 접근 권한 없음"), STORE_INVALID_ADDRESS(400,
 			"올바른 가게 주소 형식이 아닙니다"), STORE_INVALID_PHONE_NUMBER(400,
