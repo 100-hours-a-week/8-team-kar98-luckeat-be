@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.luckeat.luckeatbackend.common.exception.review.ReviewForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewNotFoundException;
+import com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException;
+import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
 import com.luckeat.luckeatbackend.permission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.review.dto.ReviewRequestDto;
@@ -74,10 +77,10 @@ public class ReviewService {
 	@Transactional
 	public Review createReview(ReviewRequestDto requestDto) {
 		Long userId = getCurrentUserId();
-		validateReviewRequest(requestDto);
+		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
 		if (!permissionService.hasPermission(userId, requestDto.getStoreId())) {
-			throw new ReviewForbiddenException("리뷰 작성 권한이 없습니다");
+			throw new ReviewForbiddenException();
 		}
 
 		Review review = new Review();
@@ -93,13 +96,13 @@ public class ReviewService {
 	@Transactional
 	public Review updateReview(Long reviewId, ReviewUpdateDto updateDto) {
 		Long userId = getCurrentUserId();
-		validateReviewUpdate(updateDto);
+		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
 		Review existingReview = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + reviewId));
+				.orElseThrow(() -> new ReviewNotFoundException());
 
 		if (!existingReview.getUserId().equals(userId)) {
-			throw new IllegalStateException("이 리뷰를 수정할 권한이 없습니다");
+			throw new ReviewForbiddenException();
 		}
 
 		existingReview.setRating(updateDto.getRating());
@@ -122,10 +125,10 @@ public class ReviewService {
 	public void deleteReview(Long id) {
 		Long userId = getCurrentUserId();
 		Review review = reviewRepository.findByIdAndDeletedAtIsNull(id)
-				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + id));
+				.orElseThrow(() -> new ReviewNotFoundException());
 
 		if (!review.getUserId().equals(userId)) {
-			throw new IllegalStateException("이 리뷰를 삭제할 권한이 없습니다");
+			throw new ReviewForbiddenException();
 		}
 
 		review.setDeletedAt(LocalDateTime.now());
@@ -138,7 +141,7 @@ public class ReviewService {
 
 		if (authentication == null || !authentication.isAuthenticated()
 				|| authentication instanceof AnonymousAuthenticationToken) {
-			throw new IllegalStateException("인증된 사용자만 접근할 수 있습니다");
+			throw new UnauthenticatedException();
 		}
 
 		// 현재 인증된 사용자의 이메일 가져오기
@@ -146,38 +149,6 @@ public class ReviewService {
 
 		// 이메일로 사용자 ID 조회
 		return userService.getUserByEmail(email)
-				.orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다: " + email)).getId();
-	}
-
-	private void validateReviewRequest(ReviewRequestDto requestDto) {
-		if (requestDto.getStoreId() == null) {
-			throw new IllegalArgumentException("스토어 ID는 필수입니다");
-		}
-
-		if (requestDto.getRating() == null) {
-			throw new IllegalArgumentException("평점은 필수입니다");
-		}
-
-		if (requestDto.getRating() < 1 || requestDto.getRating() > 5) {
-			throw new IllegalArgumentException("평점은 1~5 사이여야 합니다");
-		}
-
-		if (requestDto.getReviewContent() == null || requestDto.getReviewContent().trim().length() < 5) {
-			throw new IllegalArgumentException("리뷰 내용은 5글자 이상이어야 합니다");
-		}
-	}
-
-	private void validateReviewUpdate(ReviewUpdateDto updateDto) {
-		if (updateDto.getRating() == null) {
-			throw new IllegalArgumentException("평점은 필수입니다");
-		}
-
-		if (updateDto.getRating() < 1 || updateDto.getRating() > 5) {
-			throw new IllegalArgumentException("평점은 1~5 사이여야 합니다");
-		}
-
-		if (updateDto.getReviewContent() == null || updateDto.getReviewContent().trim().length() < 5) {
-			throw new IllegalArgumentException("리뷰 내용은 5글자 이상이어야 합니다");
-		}
+				.orElseThrow(() -> new UserNotFoundException()).getId();
 	}
 }
