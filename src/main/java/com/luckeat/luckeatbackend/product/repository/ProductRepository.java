@@ -1,6 +1,7 @@
 package com.luckeat.luckeatbackend.product.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	List<Product> findByStoreAndDeletedAtIsNull(Store store);
 
 	List<Product> findByStoreAndIsOpenTrueAndDeletedAtIsNull(Store store);
+
+	Optional<Product> findByIdAndStore(Long id, Store store);
 
 	// 특정 가게의 마감할인 중인 상품 개수 조회
 	// 삭제되지 않은 상품 중에서 마감할인 중인 상품 개수 조회
