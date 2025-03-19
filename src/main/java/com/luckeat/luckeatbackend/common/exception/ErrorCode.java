@@ -43,7 +43,10 @@ public enum ErrorCode {
 
 	// 카테고리 관련 에러
 	CATEGORY_NOT_FOUND(404, "카테고리를 찾을 수 없음"), CATEGORY_INVALID_NAME(400, "카테고리 이름 유효성 검사 실패"), CATEGORY_INVALID_IMAGE(
-			400, "카테고리 이미지 유효성 검사 실패"), CATEGORY_NAME_DUPLICATE(409, "카테고리 이름 중복");
+			400, "카테고리 이미지 유효성 검사 실패"), CATEGORY_NAME_DUPLICATE(409, "카테고리 이름 중복"),
+
+	// 권한 관련 에러
+	PERMISSION_DUPLICATE(409, "이미 권한이 존재합니다");
 
 	private final int status;
 	private final String message;

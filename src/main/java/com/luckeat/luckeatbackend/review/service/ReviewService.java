@@ -15,13 +15,13 @@ import com.luckeat.luckeatbackend.common.exception.review.ReviewForbiddenExcepti
 import com.luckeat.luckeatbackend.common.exception.review.ReviewNotFoundException;
 import com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException;
 import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
-import com.luckeat.luckeatbackend.permission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.review.dto.ReviewRequestDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewUpdateDto;
 import com.luckeat.luckeatbackend.review.model.Review;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
+import com.luckeat.luckeatbackend.reviewpermission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 
