@@ -1,4 +1,4 @@
-package com.luckeat.luckeatbackend.permission.dto;
+package com.luckeat.luckeatbackend.reviewpermission.dto;
 
 import java.util.List;
 
@@ -13,6 +13,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PermissionListResponseDto {
 
-	private String message;
 	private List<PermissionResponseDto> permissions;
 }

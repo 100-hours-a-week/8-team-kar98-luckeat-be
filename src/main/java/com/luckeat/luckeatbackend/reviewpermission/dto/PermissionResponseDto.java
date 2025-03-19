@@ -1,8 +1,8 @@
-package com.luckeat.luckeatbackend.permission.dto;
+package com.luckeat.luckeatbackend.reviewpermission.dto;
 
 import java.time.LocalDateTime;
 
-import com.luckeat.luckeatbackend.permission.model.ReviewPermission;
+import com.luckeat.luckeatbackend.reviewpermission.model.ReviewPermission;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
