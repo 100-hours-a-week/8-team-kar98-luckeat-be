@@ -27,23 +27,23 @@ public class ProductController {
 	private final ProductService productService;
 
 	@GetMapping
-	public ResponseEntity<List<Product>> getAllProducts(@PathVariable Long storeId) {
+	public ResponseEntity<List<Product>> getAllProducts(@PathVariable("store_id") Long storeId) {
 		return ResponseEntity.ok(productService.getAllProducts(storeId));
 	}
 
 	@GetMapping("/{product_id}")
-	public ResponseEntity<Product> getProductById(@PathVariable Long storeId, @PathVariable Long productId) {
+	public ResponseEntity<Product> getProductById(@PathVariable("store_id") Long storeId, @PathVariable("product_id") Long productId) {
 		return productService.getProductById(storeId, productId).map(ResponseEntity::ok)
 				.orElse(ResponseEntity.notFound().build());
 	}
 
 	@PostMapping
-	public ResponseEntity<Product> createProduct(@PathVariable Long storeId, @RequestBody Product product) {
+	public ResponseEntity<Product> createProduct(@PathVariable("store_id") Long storeId, @RequestBody Product product) {
 		return ResponseEntity.status(HttpStatus.CREATED).body(productService.saveProduct(storeId, product));
 	}
 
 	@PutMapping("/{product_id}")
-	public ResponseEntity<Product> updateProduct(@PathVariable Long storeId, @PathVariable Long productId,
+	public ResponseEntity<Product> updateProduct(@PathVariable("store_id") Long storeId, @PathVariable("product_id") Long productId,
 			@RequestBody Product product) {
 		return productService.getProductById(storeId, productId).map(existingProduct -> {
 			product.setId(productId);
@@ -52,14 +52,14 @@ public class ProductController {
 	}
 
 	@PutMapping("/{product_id}/status")
-	public ResponseEntity<Product> updateProductStatus(@PathVariable Long storeId, @PathVariable Long productId,
+	public ResponseEntity<Product> updateProductStatus(@PathVariable("store_id") Long storeId, @PathVariable("product_id") Long productId,
 			@RequestBody boolean isOpen) {
 		return productService.updateProductStatus(productId, isOpen).map(ResponseEntity::ok)
 				.orElse(ResponseEntity.notFound().build());
 	}
 
 	@DeleteMapping("/{product_id}")
-	public ResponseEntity<Void> deleteProduct(@PathVariable Long storeId, @PathVariable Long productId) {
+	public ResponseEntity<Void> deleteProduct(@PathVariable("store_id") Long storeId, @PathVariable("product_id") Long productId) {
 		return productService.getProductById(storeId, productId).map(product -> {
 			product.setDeletedAt(LocalDateTime.now());
 			productService.saveProduct(storeId, product);
