@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.luckeat.luckeatbackend.common.exception.user.EmailDuplicateException;
 import com.luckeat.luckeatbackend.common.exception.user.NicknameDuplicateException;
 import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
+import com.luckeat.luckeatbackend.common.exception.user.UserInvalidNicknameException;
 import com.luckeat.luckeatbackend.users.dto.LoginRequestDto;
 import com.luckeat.luckeatbackend.users.dto.LoginResponseDto;
 import com.luckeat.luckeatbackend.users.dto.NicknameUpdateDto;
@@ -24,6 +25,13 @@ import com.luckeat.luckeatbackend.users.dto.UserInfoResponseDto;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -34,23 +42,11 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Tag(name = "사용자 API", description = "사용자 계정 관련 API 목록")
 public class UserController {
 
 	private final UserService userService;
 
-
-	/**
-	 * 특정 ID의 사용자를 조회합니다.
-	 * 
-	 * @param userId 조회할 사용자의 ID
-	 * @return 조회된 사용자 정보
-	 * @throws UserNotFoundException 사용자가 존재하지 않는 경우 발생
-	 */
-	@GetMapping("/{user_id}")
-	public ResponseEntity<User> getUserById(@PathVariable Long userId) {
-		return ResponseEntity.ok(userService.getUserById(userId)
-				.orElseThrow(() -> new UserNotFoundException()));
-	}
 
 	/**
 	 * 새로운 사용자를 등록합니다 (회원가입).
@@ -60,11 +56,22 @@ public class UserController {
 	 * @throws EmailDuplicateException 이메일이 이미 사용 중인 경우 발생
 	 * @throws NicknameDuplicateException 닉네임이 이미 사용 중인 경우 발생
 	 */
+	@Operation(summary = "사용자 등록", description = "새로운 사용자를 시스템에 등록합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "201", description = "회원가입 성공"),
+		@ApiResponse(responseCode = "400", description = "잘못된 요청"),
+		@ApiResponse(responseCode = "409", description = "이미 존재하는 사용자", content = {
+			@Content(schema = @Schema(oneOf = {
+				EmailDuplicateException.class,
+				NicknameDuplicateException.class
+			}), mediaType = "application/json")
+		})
+	})
 	@PostMapping("/register")
-	public ResponseEntity<User> register(@Valid @RequestBody RegisterRequestDto registerRequestDto) {
+	public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequestDto registerRequestDto) {
 		// 중복 검사는 서비스 계층에서 처리
 		User user = userService.createUser(registerRequestDto);
-		return ResponseEntity.status(HttpStatus.CREATED).body(user);
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 
 	/**
@@ -74,6 +81,11 @@ public class UserController {
 	 * @return 로그인 결과 (JWT 토큰 포함)
 	 * @throws com.luckeat.luckeatbackend.common.exception.user.InvalidCredentialsException 인증 정보가 잘못된 경우 발생
 	 */
+	@Operation(summary = "사용자 로그인", description = "이메일과 비밀번호로 로그인합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "로그인 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
+	})
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
 		// 예외는 GlobalExceptionHandler에서 처리됨
@@ -82,20 +94,31 @@ public class UserController {
 	}
 
 	/**
-	 * 닉네임 중복 여부를 확인합니다.
+	 * 닉네임 중복 여부와 유효성을 확인합니다.
 	 * 
-	 * @param nickname 중복 확인할 닉네임
-	 * @return 중복이 없는 경우 200 OK
+	 * @param nickname 검증할 닉네임
+	 * @return 유효하고 중복이 없는 경우 200 OK
 	 * @throws NicknameDuplicateException 닉네임이 이미 사용 중인 경우 발생
+	 * @throws UserInvalidNicknameException 닉네임 길이가 유효하지 않은 경우 발생
 	 */
 	@GetMapping("/nicknameValid")
-	public ResponseEntity<Void> checkNicknameValidity(@RequestParam String nickname) {
-		boolean nicknameExists = userService.existsByNickname(nickname);
-		if (nicknameExists) {
-			throw new NicknameDuplicateException();
-		}
-		return ResponseEntity.ok().build();
-	}
+	@Operation(summary = "닉네임 중복 및 유효성 확인", description = "닉네임 중복 여부와 유효성(길이 제한 2~10자)을 확인합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "닉네임 유효 및 중복 없음"),
+		@ApiResponse(responseCode = "400", description = "잘못된 요청"),
+		@ApiResponse(responseCode = "409", description = "닉네임 중복")
+		})
+	public ResponseEntity<Void> checkNicknameValidity(
+            @RequestParam @jakarta.validation.constraints.Size(min = 2, max = 10, message = "닉네임은 2~10자 이내여야 합니다.") String nickname) {
+        
+        // 중복 검증
+        boolean nicknameExists = userService.existsByNickname(nickname);
+        if (nicknameExists) {
+            throw new NicknameDuplicateException();
+        }
+        
+        return ResponseEntity.ok().build();
+    }
 
 	/**
 	 * 사용자 로그아웃을 처리합니다.
@@ -103,8 +126,12 @@ public class UserController {
 	 * @return 로그아웃 성공 메시지
 	 */
 	@PostMapping("/logout")
-	public ResponseEntity<String> logoutUser() {
-		return ResponseEntity.ok("User logged out successfully.");
+	@Operation(summary = "사용자 로그아웃", description = "사용자 로그아웃을 처리합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "로그아웃 성공")
+	})
+	public ResponseEntity<Void> logoutUser() {
+		return ResponseEntity.ok().build();
 	}
 
 	/**
@@ -115,7 +142,16 @@ public class UserController {
 	 * @throws EmailDuplicateException 이메일이 이미 사용 중인 경우 발생
 	 */
 	@GetMapping("/emailValid")
-	public ResponseEntity<Void> checkEmailValidity(@RequestParam String email) {
+	@Operation(summary = "이메일 중복 여부 확인", description = "이메일 중복 여부를 확인합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "이메일 중복 없음"),
+		@ApiResponse(responseCode = "400", description = "잘못된 이메일 형식"),
+		@ApiResponse(responseCode = "409", description = "이메일 중복")
+	})
+	public ResponseEntity<Void> checkEmailValidity(
+			@RequestParam @jakarta.validation.constraints.Email(message = "유효한 이메일 형식이 아닙니다") 
+			@jakarta.validation.constraints.NotBlank(message = "이메일은 필수 입력 항목입니다") String email) {
+		
 		boolean emailExists = userService.existsByEmail(email);
 		if (emailExists) {
 			throw new EmailDuplicateException();
@@ -130,6 +166,11 @@ public class UserController {
 	 * @throws com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException 인증되지 않은 요청인 경우 발생
 	 */
 	@GetMapping("/me")
+	@Operation(summary = "현재 사용자 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다", security = @SecurityRequirement(name = "jwt"))
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "사용자 정보 조회 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
+	})	
 	public ResponseEntity<UserInfoResponseDto> getCurrentUser() {
 		// 예외는 GlobalExceptionHandler에서 처리됨
 		UserInfoResponseDto response = userService.getCurrentUserInfo();
@@ -145,6 +186,11 @@ public class UserController {
 	 * @throws com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException 인증되지 않은 요청인 경우 발생
 	 */
 	@PatchMapping("/nickname")
+	@Operation(summary = "닉네임 수정", description = "현재 로그인한 사용자의 닉네임을 수정합니다", security = @SecurityRequirement(name = "jwt"))
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "닉네임 수정 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패")
+	})
 	public ResponseEntity<Void> updateNickname(@Valid @RequestBody NicknameUpdateDto nicknameUpdateDto) {
 		// 예외는 GlobalExceptionHandler에서 처리됨
 		userService.updateNickname(nicknameUpdateDto);
@@ -160,6 +206,11 @@ public class UserController {
 	 * @throws com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException 인증되지 않은 요청인 경우 발생
 	 */
 	@PatchMapping("/password")
+	@Operation(summary = "비밀번호 수정", description = "현재 로그인한 사용자의 비밀번호를 수정합니다", security = @SecurityRequirement(name = "jwt"))
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "비밀번호 수정 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패")
+	})
 	public ResponseEntity<Void> updatePassword(@Valid @RequestBody PasswordUpdateDto passwordUpdateDto) {
 		// 예외는 GlobalExceptionHandler에서 처리됨
 		userService.updatePassword(passwordUpdateDto);
@@ -173,6 +224,11 @@ public class UserController {
 	 * @throws com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException 인증되지 않은 요청인 경우 발생
 	 */
 	@DeleteMapping
+	@Operation(summary = "사용자 탈퇴", description = "현재 로그인한 사용자를 탈퇴 처리합니다", security = @SecurityRequirement(name = "jwt"))
+	@ApiResponses({
+		@ApiResponse(responseCode = "204", description = "사용자 탈퇴 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패")
+	})
 	public ResponseEntity<Void> deleteCurrentUser() {
 		// 예외는 GlobalExceptionHandler에서 처리됨
 		userService.deleteCurrentUser();

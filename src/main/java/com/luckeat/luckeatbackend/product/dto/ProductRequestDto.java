@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 
 import com.luckeat.luckeatbackend.product.model.Product;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @Getter
 @Setter
@@ -26,6 +27,7 @@ public class ProductRequestDto {
     
     @NotBlank(message = "상품명은 필수입니다")
     @Size(min = 1, max = 50, message = "상품명은 1자 이상 50자 이하로 입력해주세요")
+    @Schema(description = "상품 이름", example = "빵")
     private String productName;
     
     @Pattern(regexp = "^$|^.*\\.(jpg|jpeg|png|gif)$|^(https?|ftp)://.*$", message = "이미지 파일 형식이 올바르지 않습니다")
@@ -34,11 +36,15 @@ public class ProductRequestDto {
     @NotNull(message = "원가는 필수입니다")
     @Positive(message = "원가는 0보다 커야 합니다")
     @Max(value = 10000000, message = "원가는 1000만원을 초과할 수 없습니다")
+    @Schema(description = "상품 가격", example = "10000")
     private Long originalPrice;
     
     @Positive(message = "할인가는 0보다 커야 합니다")
     @Max(value = 10000000, message = "할인가는 1000만원을 초과할 수 없습니다")
     private Long discountedPrice;
+    
+    @Schema(description = "상품 설명", example = "This is an example product.")
+    private String description;
     
     public Product toEntity() {
         Long finalDiscountedPrice = discountedPrice != null && discountedPrice < originalPrice
