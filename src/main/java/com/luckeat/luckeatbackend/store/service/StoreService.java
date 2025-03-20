@@ -74,7 +74,6 @@ public class StoreService {
 
 		// ReviewRepository를 사용하여 가게에 대한 리뷰 조회
     List<ReviewResponseDto> reviews = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId).stream()
-            .filter(review -> review.getDeletedAt() == null) // 삭제되지 않은 리뷰만 필터링
             .map(ReviewResponseDto::fromEntity) // ReviewResponseDto로 변환
             .collect(Collectors.toList()); // List<ReviewResponseDto>로 변환
 
