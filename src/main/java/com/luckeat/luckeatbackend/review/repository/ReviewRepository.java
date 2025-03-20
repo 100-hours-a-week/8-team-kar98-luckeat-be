@@ -22,5 +22,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	// 특정 상점의 삭제되지 않은 리뷰 조회
 	List<Review> findByStoreIdAndDeletedAtIsNull(Long storeId);
 
+	
+
 
 }

@@ -1,0 +1,29 @@
+name: 🚀 Develop 자동 배포
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:  # 수동 실행 가능
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ GitHub에서 코드 체크아웃
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ AWS EC2 서버에 SSH로 접속하여 자동 배포 스크립트 실행
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu
+            echo "👉 deploy.sh 스크립트 실행 시작"
+            bash deploy.sh
+            echo "✅ 배포 완료" 
