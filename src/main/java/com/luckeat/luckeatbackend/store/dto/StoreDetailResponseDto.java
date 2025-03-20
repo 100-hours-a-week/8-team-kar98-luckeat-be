@@ -4,6 +4,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import com.luckeat.luckeatbackend.product.model.Product;
+import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -74,7 +75,10 @@ public class StoreDetailResponseDto {
 	@Schema(description = "가게에서 판매하는 상품 목록")
 	private List<ProductResponseDto> products;
 
-	public static StoreDetailResponseDto fromEntity(Store store, List<Product> products) {
+	@Schema(description = "가게에 대한 리뷰 목록")
+	private List<ReviewResponseDto> reviews;
+
+	public static StoreDetailResponseDto fromEntity(Store store, List<Product> products, List<ReviewResponseDto> reviews) {
 		return StoreDetailResponseDto.builder().id(store.getId()).userId(store.getUserId())
 				.categoryId(store.getCategoryId()).storeName(store.getStoreName()).storeImg(store.getStoreImg())
 				.address(store.getAddress()).storeUrl(store.getStoreUrl()).shareCount(store.getShareCount())
@@ -82,6 +86,8 @@ public class StoreDetailResponseDto {
 				.contactNumber(store.getContactNumber()).description(store.getDescription())
 				.businessNumber(store.getBusinessNumber()).weekdayCloseTime(store.getWeekdayCloseTime())
 				.weekendCloseTime(store.getWeekendCloseTime())
-				.products(products.stream().map(ProductResponseDto::fromEntity).toList()).build();
+				.products(products.stream().map(ProductResponseDto::fromEntity).toList())
+				.reviews(reviews)
+				.build();
 	}
 }

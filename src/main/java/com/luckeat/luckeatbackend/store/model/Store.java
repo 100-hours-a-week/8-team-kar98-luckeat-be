@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.luckeat.luckeatbackend.common.entity.BaseEntity;
 import com.luckeat.luckeatbackend.product.model.Product;
-
+import com.luckeat.luckeatbackend.review.model.Review;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -94,5 +94,10 @@ public class Store extends BaseEntity {
 	@Builder.Default
 	@Schema(description = "가게에서 판매하는 상품 목록")
 	private List<Product> products = new ArrayList<>();
+
+	@OneToMany(mappedBy = "store", fetch = FetchType.LAZY) // Review와의 관계 설정
+	@Builder.Default
+	@Schema(description = "가게에 대한 리뷰 목록")
+	private List<Review> reviews = new ArrayList<>();
 
 }
