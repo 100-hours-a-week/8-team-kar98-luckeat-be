@@ -28,7 +28,9 @@ import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
 import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
 import com.luckeat.luckeatbackend.users.model.User;
-
+import com.luckeat.luckeatbackend.review.model.Review;
+import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
+import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +43,7 @@ public class StoreService {
 	private final StoreRepository storeRepository;
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
-
+	private final ReviewRepository reviewRepository;
 	public List<StoreResponseDto> getAllStores() {
 		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
 	}
@@ -70,7 +72,13 @@ public class StoreService {
 		List<Product> activeProducts = store.getProducts().stream().filter(product -> product.getDeletedAt() == null)
 				.collect(Collectors.toList());
 
-		return StoreDetailResponseDto.fromEntity(store, activeProducts);
+		// ReviewRepository를 사용하여 가게에 대한 리뷰 조회
+    List<ReviewResponseDto> reviews = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId).stream()
+            .filter(review -> review.getDeletedAt() == null) // 삭제되지 않은 리뷰만 필터링
+            .map(ReviewResponseDto::fromEntity) // ReviewResponseDto로 변환
+            .collect(Collectors.toList()); // List<ReviewResponseDto>로 변환
+
+		return StoreDetailResponseDto.fromEntity(store, activeProducts, reviews); // 리뷰 포함하여 반환
 	}
 
 	@Transactional
