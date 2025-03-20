@@ -1,32 +1,40 @@
 package com.luckeat.luckeatbackend.users.dto;
 
-import com.luckeat.luckeatbackend.users.model.UserRole;
-
+import com.luckeat.luckeatbackend.users.model.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "회원가입 요청 DTO")
 public class RegisterRequestDto {
     
-    @NotBlank(message = "이메일은 필수입니다")
-    @Email(message = "유효한 이메일 형식이 아닙니다")
+    @Email(message = "유효한 이메일 형식이 아닙니다.")
+    @NotBlank(message = "이메일은 필수 입력 항목입니다.")
+    @Schema(description = "사용자 이메일", example = "user@example.com", required = true)
     private String email;
     
-    @NotBlank(message = "닉네임은 필수입니다")
-    @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다")
-    private String nickname;
-    
-    @NotBlank(message = "비밀번호는 필수입니다")
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=\\S+$).{8,20}$", 
-            message = "비밀번호는 8자 이상 20자 이하이며, 영어 소문자와 숫자를 각각 최소 1개 이상 포함해야 합니다")
+    @Size(min = 8, max = 20, message = "비밀번호는 8~20자 이내여야 합니다.")
+    @NotBlank(message = "비밀번호는 필수 입력 항목입니다.")
+    @Schema(description = "비밀번호 (8~20자, 문자와 숫자 포함)", example = "password123", required = true)
     private String password;
     
+    @Size(min = 2, max = 10, message = "닉네임은 2~10자 이내여야 합니다.")
+    @NotBlank(message = "닉네임은 필수 입력 항목입니다.")
+    @Schema(description = "사용자 닉네임", example = "홍길동", required = true)
+    private String nickname;
+    
     @NotNull(message = "역할은 필수입니다")
-    private UserRole role;
+    @Schema(description = "사용자 역할 (BUYER, SELLER, ADMIN)", example = "BUYER", required = true)
+    private User.Role role;
 } 
