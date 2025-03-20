@@ -58,6 +58,11 @@ public class Store extends BaseEntity {
 	@Schema(description = "공유 횟수", example = "42")
 	private Long shareCount = 0L;
 
+	@Column(name = "average_rating", nullable = false)
+	@Builder.Default
+	@Schema(description = "가게 평점", example = "4.5")
+	private Double averageRating = 0.0;
+
 	@Column(name = "permission_url", length = 255)
 	@Schema(description = "가게 허가증 URL", example = "https://example.com/permission.jpg")
 	private String permissionUrl;

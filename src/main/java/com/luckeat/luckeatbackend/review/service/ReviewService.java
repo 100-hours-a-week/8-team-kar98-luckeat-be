@@ -24,7 +24,7 @@ import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
 import com.luckeat.luckeatbackend.reviewpermission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
-
+import com.luckeat.luckeatbackend.store.service.StoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +37,7 @@ public class ReviewService {
 	private final ReviewRepository reviewRepository;
 	private final ReviewPermissionService permissionService;
 	private final UserService userService;
+	private final StoreService storeService;
 
 	public List<ReviewResponseDto> getAllReviews() {
 		Long userId = getCurrentUserId();
@@ -75,7 +76,7 @@ public class ReviewService {
 	}
 
 	@Transactional
-	public Review createReview(ReviewRequestDto requestDto) {
+	public void createReview(ReviewRequestDto requestDto) {
 		Long userId = getCurrentUserId();
 		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
@@ -90,11 +91,13 @@ public class ReviewService {
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
 
-		return reviewRepository.save(review);
+		reviewRepository.save(review);
+		updateStoreAverageRating(requestDto.getStoreId());
+		
 	}
 
 	@Transactional
-	public Review updateReview(Long reviewId, ReviewUpdateDto updateDto) {
+	public void updateReview(Long reviewId, ReviewUpdateDto updateDto) {
 		Long userId = getCurrentUserId();
 		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
@@ -110,7 +113,10 @@ public class ReviewService {
 		if (updateDto.getReviewImage() != null) {
 			existingReview.setReviewImage(updateDto.getReviewImage());
 		}
-		return reviewRepository.save(existingReview);
+		reviewRepository.save(existingReview);
+
+		updateStoreAverageRating(existingReview.getStoreId());
+
 	}
 
 	@Transactional
@@ -133,6 +139,7 @@ public class ReviewService {
 
 		review.setDeletedAt(LocalDateTime.now());
 		reviewRepository.save(review);
+		updateStoreAverageRating(review.getStoreId());
 	}
 
 	// 현재 인증된 사용자 ID 가져오기
@@ -151,4 +158,17 @@ public class ReviewService {
 		return userService.getUserByEmail(email)
 				.orElseThrow(() -> new UserNotFoundException()).getId();
 	}
+
+	 // 평균 별점 계산 및 스토어 업데이트 메서드
+    private void updateStoreAverageRating(Long storeId) {
+        List<Review> reviews = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId);
+        
+        double averageRating = reviews.stream()
+                .mapToDouble(Review::getRating) // 리뷰의 별점 가져오기
+                .average()
+                .orElse(0.0); // 리뷰가 없을 경우 0.0으로 설정
+
+        // StoreService를 사용하여 스토어 업데이트
+        storeService.updateAverageRating(storeId, averageRating);
+    }
 }

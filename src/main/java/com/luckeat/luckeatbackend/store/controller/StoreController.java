@@ -64,7 +64,7 @@ public class StoreController {
 			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
 			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
-			@Parameter(description = "정렬 기준 (distance, rating, discount)") @RequestParam(required = false) String sort,
+			@Parameter(description = "정렬 기준 (distance, rating, share)") @RequestParam(required = false) String sort,
 			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
 			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen) {
 
