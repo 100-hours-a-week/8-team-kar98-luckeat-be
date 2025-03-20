@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.luckeat.luckeatbackend.common.exception.user.EmailDuplicateException;
 import com.luckeat.luckeatbackend.common.exception.user.NicknameDuplicateException;
 import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
+
 import com.luckeat.luckeatbackend.common.exception.user.UserInvalidNicknameException;
 import com.luckeat.luckeatbackend.users.dto.LoginRequestDto;
 import com.luckeat.luckeatbackend.users.dto.LoginResponseDto;
@@ -24,7 +25,7 @@ import com.luckeat.luckeatbackend.users.dto.RegisterRequestDto;
 import com.luckeat.luckeatbackend.users.dto.UserInfoResponseDto;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
-
+import com.luckeat.luckeatbackend.users.service.JwtBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,6 +35,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 사용자 관련 API를 처리하는 컨트롤러
@@ -46,7 +48,7 @@ import lombok.RequiredArgsConstructor;
 public class UserController {
 
 	private final UserService userService;
-
+    private final JwtBlacklistService jwtBlacklistService;
 
 	/**
 	 * 새로운 사용자를 등록합니다 (회원가입).
@@ -125,14 +127,26 @@ public class UserController {
 	 * 
 	 * @return 로그아웃 성공 메시지
 	 */
-	@PostMapping("/logout")
-	@Operation(summary = "사용자 로그아웃", description = "사용자 로그아웃을 처리합니다")
-	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "로그아웃 성공")
-	})
-	public ResponseEntity<Void> logoutUser() {
-		return ResponseEntity.ok().build();
-	}
+	 @PostMapping("/logout")
+    @Operation(summary = "사용자 로그아웃", description = "사용자 로그아웃을 처리합니다")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "로그아웃 성공")
+    })
+    public ResponseEntity<Void> logoutUser(HttpServletRequest request) {
+        String token = extractTokenFromRequest(request);
+        if (token != null) {
+            jwtBlacklistService.addTokenToBlacklist(token);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+	private String extractTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
 
 	/**
 	 * 이메일 중복 여부를 확인합니다.

@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.luckeat.luckeatbackend.security.jwt.JwtAuthenticationFilter;
 import com.luckeat.luckeatbackend.security.jwt.JwtTokenProvider;
+import com.luckeat.luckeatbackend.users.service.JwtBlacklistService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
 	private final JwtTokenProvider jwtTokenProvider;
+	private final JwtBlacklistService jwtBlacklistService;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -45,7 +47,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/reviews/**").authenticated()
 						.requestMatchers("/api/v1/categories", "/api/v1/categories/**").authenticated().anyRequest()
 						.authenticated())
-				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, jwtBlacklistService),
 						UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
