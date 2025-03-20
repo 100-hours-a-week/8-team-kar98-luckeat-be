@@ -20,6 +20,11 @@ import com.luckeat.luckeatbackend.common.exception.category.CategoryInvalidImage
 import com.luckeat.luckeatbackend.common.exception.category.CategoryInvalidNameException;
 import com.luckeat.luckeatbackend.common.exception.category.CategoryNameDuplicateException;
 import com.luckeat.luckeatbackend.common.exception.category.CategoryNotFoundException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,17 +32,27 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
+@Tag(name = "카테고리 API", description = "카테고리 관련 API 목록")
 public class CategoryController {
 
 	private final CategoryService categoryService;
 
-	// 모든 카테고리 가져오기
+	@Operation(summary = "모든 카테고리 조회", description = "시스템에 등록된 모든 카테고리를, 반환합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "카테고리 목록 조회 성공"),
+		@ApiResponse(responseCode = "500", description = "서버 오류")
+	})
 	@GetMapping
 	public ResponseEntity<List<Category>> getAllCategories() {
 		return ResponseEntity.ok(categoryService.getAllCategories());
 	}
 
-	// 카테고리 아이디로 카테고리 가져오기
+	@Operation(summary = "카테고리 상세 조회", description = "특정 ID의 카테고리 정보를 조회합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "카테고리 조회 성공"),
+		@ApiResponse(responseCode = "404", description = "카테고리를 찾을 수 없음"),
+		@ApiResponse(responseCode = "500", description = "서버 오류")
+	})
 	@GetMapping("/{category_id}")
 	public ResponseEntity<Category> getCategoryById(@PathVariable("category_id") Long categoryId) {
 		return ResponseEntity
