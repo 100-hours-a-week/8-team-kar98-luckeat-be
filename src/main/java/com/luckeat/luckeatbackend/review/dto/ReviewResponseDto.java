@@ -36,7 +36,7 @@ public class ReviewResponseDto {
 
 	public static ReviewResponseDto fromEntity(Review review) {
 		return ReviewResponseDto.builder().reviewId(review.getId()).userId(review.getUserId())
-				.rating(review.getRating()).reviewContent(review.getReviewContent())
+				.rating(review.getRating()).reviewContent(review.getReviewContent())	
 				.reviewImage(review.getReviewImage()).createdAt(review.getCreatedAt()).build();
 	}
 }

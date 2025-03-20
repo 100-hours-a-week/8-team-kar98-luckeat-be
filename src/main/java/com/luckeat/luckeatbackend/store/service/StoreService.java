@@ -133,6 +133,14 @@ public class StoreService {
 		store.setDeletedAt(java.time.LocalDateTime.now());
 		storeRepository.save(store);
 	}
+	 @Transactional
+    public void updateAverageRating(Long storeId, double averageRating) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException("스토어를 찾을 수 없습니다."));
+        
+        store.setAverageRating(averageRating); // 평균 별점 설정
+        storeRepository.save(store); // 스토어 저장
+    }
 
 	@Transactional
 	public void incrementShareCount(Long storeId) {
@@ -233,6 +241,9 @@ public class StoreService {
 				break;
 			case "share":
 				stores.sort(Comparator.comparing(Store::getShareCount).reversed());
+				break;
+			case "rating":
+				stores.sort(Comparator.comparing(Store::getAverageRating).reversed());
 				break;
 			default:
 				// 기본 정렬 또는 다른 정렬 옵션
