@@ -48,6 +48,9 @@ public class StoreResponseDto {
 	@Schema(description = "가게 평점", example = "4.5")
 	private Double averageRating;
 
+	@Schema(description = "리뷰 수", example = "10")
+	private Long reviewCount;
+
 	@Schema(description = "가게 허가증 URL", example = "https://example.com/permission.jpg")
 	private String permissionUrl;
 	
@@ -79,6 +82,10 @@ public class StoreResponseDto {
 				.latitude(store.getLatitude()).longitude(store.getLongitude()).contactNumber(store.getContactNumber())
 				.description(store.getDescription()).businessNumber(store.getBusinessNumber())
 				.weekdayCloseTime(store.getWeekdayCloseTime()).weekendCloseTime(store.getWeekendCloseTime())
-				.averageRating(store.getAverageRating()).build();
+				.averageRating(store.getAverageRating())
+				.reviewCount(store.getReviews().stream()
+                .filter(review -> review.getDeletedAt() == null) 
+                .count()) 
+				.build();
 	}
 }
