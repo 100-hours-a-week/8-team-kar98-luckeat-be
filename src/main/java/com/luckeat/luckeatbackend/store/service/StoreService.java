@@ -33,6 +33,7 @@ import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 
 @Slf4j
 @Service
@@ -339,5 +340,17 @@ public class StoreService {
 		String email = authentication.getName();
 		return userRepository.findByEmailAndDeletedAtIsNull(email)
 				.orElseThrow(() -> new UserNotFoundException()).getId();
+	}
+
+	public MyStoreResponseDto getMyStore() {
+		Long userId = getCurrentUserId();
+		
+		Store store = storeRepository.findByUserIdAndDeletedAtIsNull(userId)
+				.orElseThrow(() -> {
+					return new StoreNotFoundException("가게를 찾을 수 없습니다.");
+				});
+		
+		log.info("찾은 가게 정보: id={}, name={}", store.getId(), store.getStoreName());
+		return MyStoreResponseDto.fromEntity(store);
 	}
 }
