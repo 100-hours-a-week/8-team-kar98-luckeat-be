@@ -91,10 +91,21 @@ public class StoreRequestDto {
 	private LocalTime weekendCloseTime;
 
 	public Store toEntity(Long userId) {
-		return Store.builder().userId(userId).categoryId(categoryId).storeName(storeName).storeImg(storeImg)
-				.address(address).storeUrl(storeUrl).permissionUrl(permissionUrl).latitude(latitude)
-				.longitude(longitude).contactNumber(contactNumber).description(description)
-				.businessNumber(businessNumber).weekdayCloseTime(weekdayCloseTime).weekendCloseTime(weekendCloseTime)
+		return Store.builder()
+				.userId(userId)
+				.categoryId(categoryId)
+				.storeName(storeName)
+				.storeImg(storeImg)
+				.address(address)
+				.storeUrl(storeUrl)
+				.permissionUrl(permissionUrl)
+				.latitude(latitude)
+				.longitude(longitude)
+				.contactNumber(contactNumber)
+				.description(description)
+				.businessNumber(businessNumber)
+				.weekdayCloseTime(weekdayCloseTime)
+				.weekendCloseTime(weekendCloseTime)
 				.build();
 	}
 }
