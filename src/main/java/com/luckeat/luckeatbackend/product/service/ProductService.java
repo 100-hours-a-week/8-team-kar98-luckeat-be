@@ -41,7 +41,7 @@ public class ProductService {
 
 	public Optional<Product> getProductById(Long storeId, Long productId) {
 		Store store = getStoreById(storeId);
-		return productRepository.findByIdAndStore(productId, store);
+		return productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store);
 	}
 
 	public List<Product> getOpenProductsByStoreId(Long storeId) {
