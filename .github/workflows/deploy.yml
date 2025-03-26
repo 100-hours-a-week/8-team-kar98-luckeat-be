@@ -1,0 +1,49 @@
+name: 🚀 자동 배포
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:  # 수동 실행 가능
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1️⃣ 환경 변수 설정
+      - name: Set environment variables
+        run: |
+          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
+            echo "ENV_TYPE=prod" >> $GITHUB_ENV
+            echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
+            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+          else
+            echo "ENV_TYPE=dev" >> $GITHUB_ENV
+            echo "EC2_HOST=${{ secrets.DEV_EC2_HOST }}" >> $GITHUB_ENV
+            echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+          fi
+
+      # 2️⃣ GitHub에서 코드 체크아웃
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 3️⃣ AWS EC2 서버에 SSH로 접속하여 자동 배포 스크립트 실행
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}  # 공통 사용자 이름 사용
+          key: ${{ secrets.EC2_SSH_KEY }}  # 공통 SSH 키 사용
+          port: 22
+          script_stop: true
+          debug: true
+          script: |
+            cd /home/ubuntu
+            echo "👉 ${{ env.ENV_TYPE }} 환경 application.yml 설정"
+            mkdir -p config
+            echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
+            echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
+            bash deploy.sh
+            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료" 
