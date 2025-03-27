@@ -169,6 +169,6 @@ public class ReviewService {
                 .orElse(0.0); // 리뷰가 없을 경우 0.0으로 설정
 
         // StoreService를 사용하여 스토어 업데이트
-        storeService.updateAverageRating(storeId, averageRating);
+        storeService.updateAverageRating(storeId, (float) averageRating);
     }
 }

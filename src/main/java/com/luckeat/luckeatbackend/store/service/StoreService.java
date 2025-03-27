@@ -33,6 +33,7 @@ import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 
 @Slf4j
 @Service
@@ -46,11 +47,6 @@ public class StoreService {
 	private final ReviewRepository reviewRepository;
 	public List<StoreResponseDto> getAllStores() {
 		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
-	}
-
-	public List<StoreResponseDto> getStoresByCategory(Long categoryId) {
-		return storeRepository.findAllByCategoryId(categoryId).stream().filter(store -> store.getDeletedAt() == null)
-				.map(StoreResponseDto::fromEntity).toList();
 	}
 
 	public List<StoreResponseDto> getStoresByName(String storeName) {
@@ -134,12 +130,12 @@ public class StoreService {
 		storeRepository.save(store);
 	}
 	 @Transactional
-    public void updateAverageRating(Long storeId, double averageRating) {
+    public void updateAverageRating(Long storeId, float averageRating) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException("스토어를 찾을 수 없습니다."));
         
-        store.setAverageRating(averageRating); // 평균 별점 설정
-        storeRepository.save(store); // 스토어 저장
+        store.setAvgRating(averageRating); // avgRating으로 변경
+        storeRepository.save(store);
     }
 
 	@Transactional
@@ -154,7 +150,6 @@ public class StoreService {
 	/**
 	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드
 	 *
-	 * @param categoryId     카테고리 ID (선택적)
 	 * @param lat            위도 (선택적)
 	 * @param lng            경도 (선택적)
 	 * @param radius         검색 반경 (km) (선택적)
@@ -163,7 +158,7 @@ public class StoreService {
 	 * @param isDiscountOpen 마감 할인 중인 가게만 필터링 (선택적)
 	 * @return 필터링 및 정렬된 가게 목록 DTO
 	 */
-	public List<StoreResponseDto> getStores(Long categoryId, Double lat, Double lng, Double radius, String sort,
+	public List<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
 											String storeName, Boolean isDiscountOpen) {
 		// 1. 기본적으로 삭제되지 않은 모든 가게 조회 (deletedAt이 null인 가게들)
 		List<Store> stores = storeRepository.findAllByDeletedAtIsNull();
@@ -176,21 +171,14 @@ public class StoreService {
 					.collect(Collectors.toList());
 		}
 
-		// 3. 카테고리 필터링 (categoryId 파라미터가 존재하는 경우)
-		// - 해당 카테고리에 속한 가게들만 필터링
-		if (categoryId != null) {
-			stores = stores.stream().filter(store -> store.getCategoryId().equals(categoryId))
-					.collect(Collectors.toList());
-		}
-
-		// 4. 위치 기반 필터링 (위도, 경도, 반경이 모두 제공된 경우)
+		// 3. 위치 기반 필터링 (위도, 경도, 반경이 모두 제공된 경우)
 		// - 사용자 위치로부터 지정된 반경 내에 있는 가게들만 필터링
 		// - Haversine 공식을 사용하여 두 지점 간의 거리 계산
 		if (lat != null && lng != null && radius != null) {
 			stores = filterByDistance(stores, lat, lng, radius);
 		}
 
-		// 5. 마감할인 필터링
+		// 4. 마감할인 필터링
 		// - isDiscountOpen=true인 경우: 마감할인 중인 가게만 표시
 		// - isDiscountOpen=false인 경우: 마감할인 중이 아닌 가게만 표시
 		if (isDiscountOpen != null) {
@@ -202,7 +190,7 @@ public class StoreService {
 			}).collect(Collectors.toList());
 		}
 
-		// 6. 정렬 로직 적용 (sort 파라미터가 제공된 경우)
+		// 5. 정렬 로직 적용 (sort 파라미터가 제공된 경우)
 		// - distance: 사용자 위치로부터 거리순 정렬
 		// - share: 공유 횟수 내림차순 정렬
 		if (sort != null) {
@@ -220,7 +208,7 @@ public class StoreService {
 	}
 
 	// 거리 계산 메소드 (Haversine 공식)
-	private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+	private double calculateDistance(double lat1, double lng1, float lat2, float lng2) {
 		double earthRadius = 6371; // 지구 반경 (km)
 		double dLat = Math.toRadians(lat2 - lat1);
 		double dLng = Math.toRadians(lng2 - lng1);
@@ -243,7 +231,7 @@ public class StoreService {
 				stores.sort(Comparator.comparing(Store::getShareCount).reversed());
 				break;
 			case "rating":
-				stores.sort(Comparator.comparing(Store::getAverageRating).reversed());
+				stores.sort(Comparator.comparing(Store::getAvgRating, Comparator.nullsLast(Float::compareTo)).reversed());
 				break;
 			default:
 				// 기본 정렬 또는 다른 정렬 옵션
@@ -259,8 +247,8 @@ public class StoreService {
 	private void validateStoreData(StoreRequestDto request) {
 		validateAddress(request.getAddress());
 		validatePhoneNumber(request.getContactNumber());
-		validateBusinessHours(request.getWeekdayCloseTime(), request.getWeekendCloseTime());
 		validateDescription(request.getDescription());
+		validateBusinessHours(request.getBusinessHours());
 	}
 
 	/**
@@ -297,13 +285,13 @@ public class StoreService {
 	/**
 	 * 가게 영업시간 유효성 검사
 	 *
-	 * @param weekdayCloseTime 평일 마감시간
-	 * @param weekendCloseTime 주말 마감시간
+	 * @param businessHours 가게 영업시간
 	 */
-	private void validateBusinessHours(LocalTime weekdayCloseTime, LocalTime weekendCloseTime) {
-		if (weekdayCloseTime == null || weekendCloseTime == null) {
+	private void validateBusinessHours(String businessHours) {
+		if (businessHours == null || businessHours.trim().isEmpty()) {
 			throw new StoreInvalidBusinessHoursException();
 		}
+		// 필요한 경우 영업시간 형식 추가 검증 로직 구현
 	}
 
 	/**
@@ -339,5 +327,17 @@ public class StoreService {
 		String email = authentication.getName();
 		return userRepository.findByEmailAndDeletedAtIsNull(email)
 				.orElseThrow(() -> new UserNotFoundException()).getId();
+	}
+
+	public MyStoreResponseDto getMyStore() {
+		Long userId = getCurrentUserId();
+		
+		Store store = storeRepository.findByUserIdAndDeletedAtIsNull(userId)
+				.orElseThrow(() -> {
+					return new StoreNotFoundException("가게를 찾을 수 없습니다.");
+				});
+		
+		log.info("찾은 가게 정보: id={}, name={}", store.getId(), store.getStoreName());
+		return MyStoreResponseDto.fromEntity(store);
 	}
 }

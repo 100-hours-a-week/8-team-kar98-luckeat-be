@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.luckeat.luckeatbackend.common.exception.store.StoreForbiddenException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreUnauthenticatedException;
+import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
 import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
@@ -45,7 +46,6 @@ public class StoreController {
 	/**
 	 * 가게 목록을 조회합니다.
 	 * 
-	 * @param categoryId 카테고리 ID를 이용한 필터링
 	 * @param lat 현재 위치 위도
 	 * @param lng 현재 위치 경도
 	 * @param radius 검색 반경 (km)
@@ -60,7 +60,6 @@ public class StoreController {
 	})
 	@GetMapping
 	public ResponseEntity<List<StoreResponseDto>> getAllStores(
-			@Parameter(description = "카테고리 ID") @RequestParam(required = false) Long categoryId,
 			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
 			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
@@ -68,7 +67,7 @@ public class StoreController {
 			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
 			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen) {
 
-		return ResponseEntity.ok(storeService.getStores(categoryId, lat, lng, radius, sort, storeName, isDiscountOpen));
+		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen));
 	}
 
 	/**
@@ -126,7 +125,8 @@ public class StoreController {
 		@ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음", content = @Content)
 	})
 	@PutMapping("/{store_id}")
-	public ResponseEntity<Void> updateStore(@PathVariable("store_id") Long storeId,
+	public ResponseEntity<Void> updateStore(
+			@PathVariable("store_id") Long storeId,
 			@Valid @RequestBody StoreRequestDto storeRequest) {
 		storeService.updateStore(storeId, storeRequest);
 		return ResponseEntity.ok().build();
@@ -170,5 +170,18 @@ public class StoreController {
 	public ResponseEntity<Void> incrementShareCount(@PathVariable("store_id") Long storeId) {
 		storeService.incrementShareCount(storeId);
 		return ResponseEntity.ok().build();
+	}
+
+	@Operation(summary = "내 가게 정보 조회", 
+			  description = "현재 로그인한 사용자의 가게 정보를 조회합니다", 
+			  security = @SecurityRequirement(name = "jwt"))
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "내 가게 정보 조회 성공"),
+		@ApiResponse(responseCode = "401", description = "인증 실패", content = @Content),
+		@ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음", content = @Content)
+	})
+	@GetMapping("/my")
+	public ResponseEntity<MyStoreResponseDto> getMyStore() {
+		return ResponseEntity.ok(storeService.getMyStore());
 	}
 }

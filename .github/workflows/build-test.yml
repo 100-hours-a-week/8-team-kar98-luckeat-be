@@ -5,8 +5,8 @@ on:
     branches: 
       - main
       - develop
-    types: [opened, synchronize]  # ✅ PR이 생성되거나 새로운 커밋이 추가될 때만 실행
-  workflow_dispatch:  # ✅ 수동 실행 가능
+    types: [opened, synchronize]  # PR이 생성되거나 새로운 커밋이 추가될 때만 실행
+  workflow_dispatch:  # 수동 실행 가능
 
 jobs:
   build-test:
@@ -25,10 +25,18 @@ jobs:
       - name: Grant execute permission for Gradle Wrapper
         run: chmod +x gradlew
 
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+          else
+            echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+          fi
+
       - name: Create application.yml
         run: |
           mkdir -p src/main/resources
-          echo "${{ secrets.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+          echo "${{ env.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
 
       - name: Build and Run Tests
         run: ./gradlew clean build --console=verbose

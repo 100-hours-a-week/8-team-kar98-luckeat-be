@@ -35,7 +35,7 @@ public class JwtBlacklistService {
         JwtBlacklist jwtBlacklist = JwtBlacklist.builder()
             .token(token)
             .expirationDate(expirationDate)
-            .blacklistedAt(LocalDateTime.now())
+            .createdAt(LocalDateTime.now())
             .build();
             
         jwtBlacklistRepository.save(jwtBlacklist);
