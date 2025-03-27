@@ -3,9 +3,15 @@ package com.luckeat.luckeatbackend.product.model;
 import org.hibernate.annotations.SQLDelete;
 
 import com.luckeat.luckeatbackend.common.entity.BaseEntity;
+import com.luckeat.luckeatbackend.store.model.Store;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,8 +29,9 @@ import lombok.Setter;
 @SQLDelete(sql = "UPDATE product SET deleted_at = NOW() WHERE id = ?")
 public class Product extends BaseEntity {
 
-	@Column(name = "store_id", nullable = false, columnDefinition = "BIGINT UNSIGNED COMMENT '상품을 제공하는 가게 ID'")
-	private Long storeId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "store_id", nullable = false, foreignKey = @ForeignKey(name = "none", value = ConstraintMode.NO_CONSTRAINT))
+	private Store store;
 
 	@Column(name = "product_name", nullable = false, columnDefinition = "VARCHAR(255) COMMENT '상품 이름'")
 	private String productName;

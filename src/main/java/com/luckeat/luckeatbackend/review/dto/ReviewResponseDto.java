@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @Data
 @Builder
@@ -15,16 +16,27 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReviewResponseDto {
 
+	@Schema(description = "리뷰 ID", example = "1")
 	private Long reviewId;
+
+	@Schema(description = "사용자 ID", example = "42")
 	private Long userId;
+
+	@Schema(description = "평점", example = "4")
 	private Integer rating;
+
+	@Schema(description = "리뷰 내용", example = "이 가게는 정말 좋았습니다!")
 	private String reviewContent;
+
+	@Schema(description = "리뷰 이미지 URL", example = "http://example.com/review.jpg")
 	private String reviewImage;
+
+	@Schema(description = "리뷰 작성 시간", example = "2023-03-20T12:34:56")
 	private LocalDateTime createdAt;
 
 	public static ReviewResponseDto fromEntity(Review review) {
 		return ReviewResponseDto.builder().reviewId(review.getId()).userId(review.getUserId())
-				.rating(review.getRating()).reviewContent(review.getReviewContent())
+				.rating(review.getRating()).reviewContent(review.getReviewContent())	
 				.reviewImage(review.getReviewImage()).createdAt(review.getCreatedAt()).build();
 	}
 }

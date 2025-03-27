@@ -5,17 +5,26 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luckeat.luckeatbackend.common.exception.review.ReviewForbiddenException;
+import com.luckeat.luckeatbackend.common.exception.review.ReviewNotFoundException;
+import com.luckeat.luckeatbackend.common.exception.user.UnauthenticatedException;
+import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.review.dto.ReviewRequestDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewUpdateDto;
 import com.luckeat.luckeatbackend.review.model.Review;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
+import com.luckeat.luckeatbackend.reviewpermission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.users.model.User;
-
+import com.luckeat.luckeatbackend.users.service.UserService;
+import com.luckeat.luckeatbackend.store.service.StoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,42 +35,54 @@ import lombok.extern.slf4j.Slf4j;
 public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
+	private final ReviewPermissionService permissionService;
+	private final UserService userService;
+	private final StoreService storeService;
 
 	public List<ReviewResponseDto> getAllReviews() {
-		return reviewRepository.findAll().stream().map(ReviewResponseDto::fromEntity).collect(Collectors.toList());
+		Long userId = getCurrentUserId();
+		return reviewRepository.findByDeletedAtIsNull().stream().map(ReviewResponseDto::fromEntity)
+				.collect(Collectors.toList());
 	}
 
+	// 소프트 삭제 적용 - 삭제된 리뷰 제외
 	public Optional<Review> getReviewById(Long id) {
-		return reviewRepository.findById(id);
+		return reviewRepository.findByIdAndDeletedAtIsNull(id);
 	}
 
+	// 소프트 삭제 적용 - 삭제된 리뷰 제외
 	public Optional<ReviewResponseDto> getReviewDtoById(Long id) {
-		return reviewRepository.findById(id).map(ReviewResponseDto::fromEntity);
+		return reviewRepository.findByIdAndDeletedAtIsNull(id).map(ReviewResponseDto::fromEntity);
 	}
 
 	public List<ReviewResponseDto> getReviewsByUser(User user) {
-		return reviewRepository.findByUserId(user.getId()).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByUserIdAndDeletedAtIsNull(user.getId()).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByUserId(Long userId) {
-		return reviewRepository.findByUserId(userId).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByUserIdAndDeletedAtIsNull(userId).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByProduct(Product product) {
-		return reviewRepository.findByStoreId(product.getStoreId()).stream().map(ReviewResponseDto::fromEntity)
-				.collect(Collectors.toList());
+		return reviewRepository.findByStoreIdAndDeletedAtIsNull(product.getStore().getId()).stream()
+				.map(ReviewResponseDto::fromEntity).collect(Collectors.toList());
 	}
 
 	public List<ReviewResponseDto> getReviewsByStoreId(Long storeId) {
-		return reviewRepository.findByStoreId(storeId).stream().map(ReviewResponseDto::fromEntity)
+		return reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId).stream().map(ReviewResponseDto::fromEntity)
 				.collect(Collectors.toList());
 	}
 
 	@Transactional
-	public Review createReview(ReviewRequestDto requestDto, Long userId) {
-		validateReviewRequest(requestDto);
+	public void createReview(ReviewRequestDto requestDto) {
+		Long userId = getCurrentUserId();
+		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
+
+		if (!permissionService.hasPermission(userId, requestDto.getStoreId())) {
+			throw new ReviewForbiddenException();
+		}
 
 		Review review = new Review();
 		review.setUserId(userId);
@@ -69,20 +90,22 @@ public class ReviewService {
 		review.setRating(requestDto.getRating());
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
-		review.setIsDelete(false);
 
-		return reviewRepository.save(review);
+		reviewRepository.save(review);
+		updateStoreAverageRating(requestDto.getStoreId());
+		
 	}
 
 	@Transactional
-	public Review updateReview(Long reviewId, ReviewUpdateDto updateDto, Long userId) {
-		validateReviewUpdate(updateDto);
+	public void updateReview(Long reviewId, ReviewUpdateDto updateDto) {
+		Long userId = getCurrentUserId();
+		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
-		Review existingReview = reviewRepository.findById(reviewId)
-				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + reviewId));
+		Review existingReview = reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
+				.orElseThrow(() -> new ReviewNotFoundException());
 
 		if (!existingReview.getUserId().equals(userId)) {
-			throw new IllegalStateException("이 리뷰를 수정할 권한이 없습니다");
+			throw new ReviewForbiddenException();
 		}
 
 		existingReview.setRating(updateDto.getRating());
@@ -90,52 +113,62 @@ public class ReviewService {
 		if (updateDto.getReviewImage() != null) {
 			existingReview.setReviewImage(updateDto.getReviewImage());
 		}
-		return reviewRepository.save(existingReview);
+		reviewRepository.save(existingReview);
+
+		updateStoreAverageRating(existingReview.getStoreId());
+
 	}
 
 	@Transactional
-	public void deleteReview(Long id, Long userId) {
-		Review review = reviewRepository.findById(id)
-				.orElseThrow(() -> new IllegalStateException("리뷰를 찾을 수 없습니다: " + id));
+	public List<ReviewResponseDto> getMyReviews() {
+		Long userId = getCurrentUserId();
+
+		return reviewRepository.findByUserIdAndDeletedAtIsNull(userId).stream().map(ReviewResponseDto::fromEntity)
+				.collect(Collectors.toList());
+	}
+
+	@Transactional
+	public void deleteReview(Long id) {
+		Long userId = getCurrentUserId();
+		Review review = reviewRepository.findByIdAndDeletedAtIsNull(id)
+				.orElseThrow(() -> new ReviewNotFoundException());
 
 		if (!review.getUserId().equals(userId)) {
-			throw new IllegalStateException("이 리뷰를 삭제할 권한이 없습니다");
+			throw new ReviewForbiddenException();
 		}
 
-		review.setIsDelete(true);
 		review.setDeletedAt(LocalDateTime.now());
 		reviewRepository.save(review);
+		updateStoreAverageRating(review.getStoreId());
 	}
 
-	private void validateReviewRequest(ReviewRequestDto requestDto) {
-		if (requestDto.getStoreId() == null) {
-			throw new IllegalArgumentException("스토어 ID는 필수입니다");
+	// 현재 인증된 사용자 ID 가져오기
+	private Long getCurrentUserId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+		if (authentication == null || !authentication.isAuthenticated()
+				|| authentication instanceof AnonymousAuthenticationToken) {
+			throw new UnauthenticatedException();
 		}
 
-		if (requestDto.getRating() == null) {
-			throw new IllegalArgumentException("평점은 필수입니다");
-		}
+		// 현재 인증된 사용자의 이메일 가져오기
+		String email = authentication.getName();
 
-		if (requestDto.getRating() < 1 || requestDto.getRating() > 5) {
-			throw new IllegalArgumentException("평점은 1~5 사이여야 합니다");
-		}
-
-		if (requestDto.getReviewContent() == null || requestDto.getReviewContent().trim().length() < 5) {
-			throw new IllegalArgumentException("리뷰 내용은 5글자 이상이어야 합니다");
-		}
+		// 이메일로 사용자 ID 조회
+		return userService.getUserByEmail(email)
+				.orElseThrow(() -> new UserNotFoundException()).getId();
 	}
 
-	private void validateReviewUpdate(ReviewUpdateDto updateDto) {
-		if (updateDto.getRating() == null) {
-			throw new IllegalArgumentException("평점은 필수입니다");
-		}
+	 // 평균 별점 계산 및 스토어 업데이트 메서드
+    private void updateStoreAverageRating(Long storeId) {
+        List<Review> reviews = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId);
+        
+        double averageRating = reviews.stream()
+                .mapToDouble(Review::getRating) // 리뷰의 별점 가져오기
+                .average()
+                .orElse(0.0); // 리뷰가 없을 경우 0.0으로 설정
 
-		if (updateDto.getRating() < 1 || updateDto.getRating() > 5) {
-			throw new IllegalArgumentException("평점은 1~5 사이여야 합니다");
-		}
-
-		if (updateDto.getReviewContent() == null || updateDto.getReviewContent().trim().length() < 5) {
-			throw new IllegalArgumentException("리뷰 내용은 5글자 이상이어야 합니다");
-		}
-	}
+        // StoreService를 사용하여 스토어 업데이트
+        storeService.updateAverageRating(storeId, (float) averageRating);
+    }
 }

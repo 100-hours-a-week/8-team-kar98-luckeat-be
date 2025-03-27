@@ -1,7 +1,7 @@
 package com.luckeat.luckeatbackend.review.model;
 
 import com.luckeat.luckeatbackend.common.entity.BaseEntity;
-
+import com.luckeat.luckeatbackend.store.model.Store;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,7 +26,8 @@ public class Review extends BaseEntity {
 	@Column(name = "review_image", columnDefinition = "TEXT")
 	private String reviewImage;
 
-	@Column(name = "is_delete", nullable = false)
-	private Boolean isDelete = false;
+	@ManyToOne(fetch = FetchType.LAZY) // 다대일 관계
+    @JoinColumn(name = "store_id", insertable = false, updatable = false) // 외래 키로 사용
+    private Store store; // 가게와의 관계
 
 }

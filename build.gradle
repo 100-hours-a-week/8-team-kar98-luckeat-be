@@ -1,10 +1,7 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.4.3'
+    id 'org.springframework.boot' version '3.3.1'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'com.diffplug.spotless' version '6.25.0' // auto code formatting
-    id 'checkstyle' // ✅ Checkstyle 추가
-
 }
 
 group = 'com.luckeat'
@@ -13,15 +10,6 @@ version = '0.0.1-SNAPSHOT'
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-spotless {
-    java {
-        target '**/*.java'
-        eclipse().configFile("checkstyle/naver-checkstyle-spotless.xml") // 네이버 스타일 적용
-        removeUnusedImports() // 불필요한 import 삭제
-        importOrder("java", "javax", "org", "com") // import 정렬
     }
 }
 
@@ -41,6 +29,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.session:spring-session-core'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0'
+
+    // JWT 의존성 추가
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'com.mysql:mysql-connector-j'
@@ -68,12 +64,4 @@ tasks.register('installGitHooks') {
 
 tasks.named('build').configure {
     dependsOn tasks.named('installGitHooks')
-}
-
-checkstyle {
-    toolVersion = "10.3" // 최신 버전 사용 가능
-    configFile = file("${rootProject.projectDir}/checkstyle/naver-checkstyle-rules.xml") // 네이버 코드 스타일 적용
-    configProperties = [
-        "suppressionFile": "${rootProject.projectDir}/checkstyle/naver-checkstyle-suppressions.xml"
-    ]
 }

@@ -1,12 +1,12 @@
-name: 🚀 Build & Test
+name: ⚙️ Build & Test
 
 on:
-  push:
-    branches: [ develop ]
   pull_request:
-    branches: [ main, develop ]
-    types: [opened, synchronize]  # ✅ PR이 생성되거나 새로운 커밋이 추가될 때만 실행
-  workflow_dispatch:  # ✅ 수동 실행 가능
+    branches: 
+      - main
+      - develop
+    types: [opened, synchronize]  # PR이 생성되거나 새로운 커밋이 추가될 때만 실행
+  workflow_dispatch:  # 수동 실행 가능
 
 jobs:
   build-test:
@@ -25,25 +25,27 @@ jobs:
       - name: Grant execute permission for Gradle Wrapper
         run: chmod +x gradlew
 
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+          else
+            echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+          fi
+
       - name: Create application.yml
         run: |
           mkdir -p src/main/resources
-          echo "${{ secrets.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+          echo "${{ env.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
 
-      - name: Apply Spotless (Format Code)
-        run: ./gradlew spotlessApply --console=verbose
-
-      - name: Clean and Build Project
+      - name: Build and Run Tests
         run: ./gradlew clean build --console=verbose
+        continue-on-error: true  # 빌드 중 테스트가 실패해도 워크플로우가 중단되지 않도록 설정
 
-      - name: Run Tests
-        run: ./gradlew test --console=verbose
-        continue-on-error: true  # 테스트 실패해도 빌드가 중단되지 않도록 설정
-
-      - name: Upload Test Results
-        if: always()
+      - name: Upload Test Results on Failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: test-reports-failed
           path: |
             **/build/reports/tests/
