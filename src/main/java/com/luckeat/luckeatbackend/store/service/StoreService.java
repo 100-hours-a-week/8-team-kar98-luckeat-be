@@ -187,15 +187,6 @@ public class StoreService {
         storeRepository.save(store);
     }
 
-	@Transactional
-	public void incrementShareCount(Long storeId) {
-		Store store = storeRepository.findByIdAndDeletedAtIsNull(storeId)
-				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
-
-		store.setShareCount(store.getShareCount() + 1);
-		storeRepository.save(store);
-	}
-
 	/**
 	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드
 	 *
