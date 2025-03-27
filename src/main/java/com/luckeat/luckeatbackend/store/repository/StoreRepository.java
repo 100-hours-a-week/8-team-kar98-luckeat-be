@@ -13,8 +13,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
 	List<Store> findAllByUserId(Long userId);
 
-	List<Store> findAllByCategoryId(Long categoryId);
-
 	List<Store> findAllByDeletedAtIsNull();
 
 	Optional<Store> findByIdAndDeletedAtIsNull(Long id);
@@ -22,6 +20,4 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 	List<Store> findByStoreNameContainingAndDeletedAtIsNull(String storeName);
 
 	Optional<Store> findByUserIdAndDeletedAtIsNull(Long userId);
-
-	Optional<Store> findFirstByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
 }

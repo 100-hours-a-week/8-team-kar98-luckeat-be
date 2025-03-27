@@ -29,71 +29,73 @@ import lombok.Setter;
 @Schema(description = "가게 엔티티")
 public class Store extends BaseEntity {
 
-	@Column(name = "user_id", nullable = false)
-	@Schema(description = "가게 소유자 ID", example = "100")
+	@Schema(description = "가게를 소유한 회원 ID", example = "1")
+	@Column(name = "user_id", columnDefinition = "BIGINT UNSIGNED")
 	private Long userId;
 
-	@Column(name = "category_id", nullable = false)
-	@Schema(description = "카테고리 ID", example = "2")
-	private Long categoryId;
-
-	@Column(name = "store_name", nullable = false, length = 255)
-	@Schema(description = "가게 이름", example = "맛있는 국수집")
+	@Schema(description = "가게 이름", example = "맛있는 빵집")
+	@Column(name = "store_name", nullable = false)
 	private String storeName;
 
-	@Column(name = "store_img", nullable = false, columnDefinition = "TEXT")
 	@Schema(description = "가게 이미지 URL", example = "https://example.com/image.jpg")
+	@Column(name = "store_img", columnDefinition = "TEXT")
 	private String storeImg;
 
-	@Column(name = "address", nullable = false, length = 255)
-	@Schema(description = "가게 주소", example = "서울시 강남구 역삼동 123-45")
+	@Schema(description = "가게 주소", example = "제주시 연동 123-45")
+	@Column(name = "address", nullable = false)
 	private String address;
 
-	@Column(name = "store_url", length = 255)
-	@Schema(description = "가게 웹사이트 URL", example = "https://example.com/store")
+	@Schema(description = "가게 공유 횟수", example = "0")
+	@Column(name = "share_count", nullable = false, columnDefinition = "BIGINT UNSIGNED DEFAULT 0")
+	private Long shareCount;
+
+	@Schema(description = "가게 상세 페이지 단축 URL", example = "https://short.url/abc123")
+	@Column(name = "store_url")
 	private String storeUrl;
 
-	@Column(name = "share_count", nullable = false)
-	@Builder.Default
-	@Schema(description = "공유 횟수", example = "42")
-	private Long shareCount = 0L;
-
-	@Column(name = "average_rating", nullable = false)
-	@Builder.Default
-	@Schema(description = "가게 평점", example = "4.5")
-	private Double averageRating = 0.0;
-
-	@Column(name = "permission_url", length = 255)
-	@Schema(description = "가게 허가증 URL", example = "https://example.com/permission.jpg")
+	@Schema(description = "리뷰 작성 권한 부여 URL", example = "https://review.url/xyz789")
+	@Column(name = "permission_url")
 	private String permissionUrl;
 
+	@Schema(description = "가게 위치 위도", example = "37.5665")
 	@Column(name = "latitude", nullable = false)
-	@Schema(description = "위도", example = "37.123456")
-	private Double latitude;
+	private Float latitude;
 
+	@Schema(description = "가게 위치 경도", example = "126.9780")
 	@Column(name = "longitude", nullable = false)
-	@Schema(description = "경도", example = "127.123456")
-	private Double longitude;
+	private Float longitude;
 
-	@Column(name = "contact_number", length = 255)
-	@Schema(description = "연락처", example = "02-1234-5678")
+	@Schema(description = "가게 연락처", example = "02-1234-5678")
+	@Column(name = "contact_number")
 	private String contactNumber;
 
+	@Schema(description = "가게 상세 설명", example = "맛있는 빵을 판매하는 가게입니다.")
 	@Column(name = "description", columnDefinition = "TEXT")
-	@Schema(description = "가게 설명", example = "맛있는 국수와 다양한 반찬을 제공하는 가게입니다.")
 	private String description;
 
-	@Column(name = "business_number", length = 255)
-	@Schema(description = "사업자 번호", example = "123-45-67890")
+	@Schema(description = "사업자 등록 번호", example = "123-45-67890")
+	@Column(name = "business_number")
 	private String businessNumber;
 
-	@Column(name = "weekday_close_time")
-	@Schema(description = "평일 마감 시간", example = "22:00")
-	private LocalTime weekdayCloseTime;
+	@Schema(description = "영업 시간", example = "매일 11:00-22:00")
+	@Column(name = "business_hours", columnDefinition = "TEXT")
+	private String businessHours;
 
-	@Column(name = "weekend_close_time")
-	@Schema(description = "주말 마감 시간", example = "23:00")
-	private LocalTime weekendCloseTime;
+	@Schema(description = "가게 웹사이트", example = "https://www.example.com")
+	@Column(name = "website", columnDefinition = "TEXT")
+	private String website;
+
+	@Schema(description = "가게 평균 별점", example = "4.5")
+	@Column(name = "avg_rating")
+	private Float avgRating;
+
+	@Schema(description = "구글 평균 별점", example = "4.3")
+	@Column(name = "avg_rating_google")
+	private Float avgRatingGoogle;
+
+	@Schema(description = "구글 리뷰 요약", example = "친절하고 맛있는 음식점입니다.")
+	@Column(name = "review_summary", columnDefinition = "TEXT")
+	private String reviewSummary;
 
 	@OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
 	@Builder.Default
