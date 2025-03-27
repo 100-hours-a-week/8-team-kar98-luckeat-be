@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.short_url.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,9 @@ public class ShortUrlService {
 
     private final StoreRepository storeRepository;
 
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     @Transactional
     public String getOriginalUrl(String hashCode) {
         Store store = storeRepository.findByStoreUrl(hashCode)
@@ -25,6 +29,6 @@ public class ShortUrlService {
         store.setShareCount(store.getShareCount() + 1);
         storeRepository.save(store);
 
-        return "https://luckeat.com/api/v1/stores/" + hashcode;
+        return baseUrl + hashcode;
     }
 } 
