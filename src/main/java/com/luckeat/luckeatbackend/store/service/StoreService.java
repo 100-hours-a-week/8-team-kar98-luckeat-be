@@ -119,7 +119,21 @@ public class StoreService {
 			return hexString.toString().substring(0, 8);
 		} catch (NoSuchAlgorithmException e) {
 			// SHA-256 알고리즘을 사용할 수 없는 경우 기존 방식으로 폴백
-			return Integer.toHexString(input.hashCode());
+			// hashCode()를 사용하지만 8자리로 일관된 길이 유지
+			String hashCodeHex = Integer.toHexString(input.hashCode());
+			
+			// 8자리 미만인 경우 앞에 0을 채워 8자리로 맞춤
+			if (hashCodeHex.length() < 8) {
+				StringBuilder paddedHex = new StringBuilder();
+				for (int i = 0; i < 8 - hashCodeHex.length(); i++) {
+					paddedHex.append('0');
+				}
+				paddedHex.append(hashCodeHex);
+				return paddedHex.toString();
+			}
+			
+			// 8자리 이상인 경우 앞 8자리만 사용
+			return hashCodeHex.substring(0, Math.min(hashCodeHex.length(), 8));
 		}
 	}
 
