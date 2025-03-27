@@ -87,7 +87,7 @@ public class StoreService {
 
 		Store store = request.toEntity(userId);
 		
-		// 가게 이름과 현재 시간을 조합하여 고유한 해시 생성
+		// 가게 이름과 Google Place ID를 조합하여 고유한 해시 생성
 		String hashInput = store.getStoreName() + store.getGooglePlaceId();
 		String url = generateSha256Hash(hashInput);
 		store.setStoreUrl(url);
