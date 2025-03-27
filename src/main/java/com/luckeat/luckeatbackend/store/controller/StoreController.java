@@ -154,24 +154,6 @@ public class StoreController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/**
-	 * 가게 공유 횟수를 증가시킵니다.
-	 * 
-	 * @param storeId 공유할 가게 ID
-	 * @return 성공 시 200 OK
-	 * @throws StoreNotFoundException 가게가 존재하지 않는 경우 발생
-	 */
-	@Operation(summary = "가게 공유 횟수 증가", description = "가게가 공유될 때마다 공유 횟수를 증가시킵니다")
-	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "공유 횟수 증가 성공"),
-		@ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음", content = @Content)
-	})
-	@PostMapping("/{store_id}/share")
-	public ResponseEntity<Void> incrementShareCount(@PathVariable("store_id") Long storeId) {
-		storeService.incrementShareCount(storeId);
-		return ResponseEntity.ok().build();
-	}
-
 	@Operation(summary = "내 가게 정보 조회", 
 			  description = "현재 로그인한 사용자의 가게 정보를 조회합니다", 
 			  security = @SecurityRequirement(name = "jwt"))
