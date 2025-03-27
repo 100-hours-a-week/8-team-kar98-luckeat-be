@@ -49,7 +49,7 @@ public class Store extends BaseEntity {
 	@Column(name = "share_count", nullable = false, columnDefinition = "BIGINT UNSIGNED DEFAULT 0")
 	private Long shareCount;
 
-	@Schema(description = "가게 상세 페이지 단축 URL", example = "https://short.url/abc123")
+	@Schema(description = "가게 상세 페이지 단축 URL", example = "{hashcode}")
 	@Column(name = "store_url")
 	private String storeUrl;
 
@@ -97,6 +97,10 @@ public class Store extends BaseEntity {
 	@Column(name = "review_summary", columnDefinition = "TEXT")
 	private String reviewSummary;
 
+	@Schema(description = "구글 장소 ID", example = "1234567890")
+	@Column(name = "google_place_id")
+	private String googlePlaceId;
+
 	@OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
 	@Builder.Default
 	@Schema(description = "가게에서 판매하는 상품 목록")
@@ -107,4 +111,7 @@ public class Store extends BaseEntity {
 	@Schema(description = "가게에 대한 리뷰 목록")
 	private List<Review> reviews = new ArrayList<>();
 
+	public void setStoreUrl(String storeUrl) {
+		this.storeUrl = storeUrl;
+	}
 }
