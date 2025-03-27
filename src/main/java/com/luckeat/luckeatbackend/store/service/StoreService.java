@@ -1,6 +1,8 @@
 package com.luckeat.luckeatbackend.store.service;
 
-import java.time.LocalTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,22 +20,21 @@ import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidDescription
 import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidPhoneNumberException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreUnauthenticatedException;
+import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.repository.ProductRepository;
+import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
+import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
+import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
 import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
-import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
-import com.luckeat.luckeatbackend.users.model.User;
-import com.luckeat.luckeatbackend.review.model.Review;
-import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
-import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 
 @Slf4j
 @Service
@@ -85,7 +86,55 @@ public class StoreService {
 		validateStoreData(request);
 
 		Store store = request.toEntity(userId);
+		
+		// 가게 이름과 Google Place ID를 조합하여 고유한 해시 생성
+		String hashInput = store.getStoreName() + store.getGooglePlaceId();
+		String url = generateSha256Hash(hashInput);
+		store.setStoreUrl(url);
 		storeRepository.save(store);
+	}
+
+	/**
+	 * 문자열에 대한 SHA-256 해시를 생성하는 메서드
+	 * 
+	 * @param input 해시할 입력 문자열
+	 * @return 16진수 형태의 SHA-256 해시 문자열 (첫 8자리만 사용)
+	 */
+	private String generateSha256Hash(String input) {
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+			
+			// 16진수 문자열로 변환
+			StringBuilder hexString = new StringBuilder();
+			for (byte b : hashBytes) {
+				String hex = Integer.toHexString(0xff & b);
+				if (hex.length() == 1) {
+					hexString.append('0');
+				}
+				hexString.append(hex);
+			}
+			
+			// URL에 사용하기 위해 첫 8자리만 반환 (충분한 고유성 보장)
+			return hexString.toString().substring(0, 8);
+		} catch (NoSuchAlgorithmException e) {
+			// SHA-256 알고리즘을 사용할 수 없는 경우 기존 방식으로 폴백
+			// hashCode()를 사용하지만 8자리로 일관된 길이 유지
+			String hashCodeHex = Integer.toHexString(input.hashCode());
+			
+			// 8자리 미만인 경우 앞에 0을 채워 8자리로 맞춤
+			if (hashCodeHex.length() < 8) {
+				StringBuilder paddedHex = new StringBuilder();
+				for (int i = 0; i < 8 - hashCodeHex.length(); i++) {
+					paddedHex.append('0');
+				}
+				paddedHex.append(hashCodeHex);
+				return paddedHex.toString();
+			}
+			
+			// 8자리 이상인 경우 앞 8자리만 사용
+			return hashCodeHex.substring(0, Math.min(hashCodeHex.length(), 8));
+		}
 	}
 
 	@Transactional

@@ -20,4 +20,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 	List<Store> findByStoreNameContainingAndDeletedAtIsNull(String storeName);
 
 	Optional<Store> findByUserIdAndDeletedAtIsNull(Long userId);
+
+	Optional<Store> findByStoreUrl(String storeUrl);
 }
