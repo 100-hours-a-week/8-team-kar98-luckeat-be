@@ -35,7 +35,6 @@ public class StoreRequestDto {
 	private String storeName;
 	
 	@NotBlank(message = "가게 이미지는 필수 항목입니다")
-	@Pattern(regexp = "^(https?://)(.*)", message = "이미지 URL은 http:// 또는 https://로 시작해야 합니다")
 	@Schema(description = "가게 이미지 URL", example = "https://example.com/image.jpg", required = true)
 	private String storeImg;
 	
@@ -44,15 +43,15 @@ public class StoreRequestDto {
 	@Schema(description = "가게 주소", example = "서울시 강남구 역삼동 123-45", required = true)
 	private String address;
 	
-	@Pattern(regexp = "^(https?://)(.*)|^$", message = "URL은 http:// 또는 https://로 시작해야 합니다")
+
 	@Schema(description = "가게 웹사이트", example = "https://example.com/store")
 	private String website;
 	
-	@Pattern(regexp = "^(https?://)(.*)|^$", message = "URL은 http:// 또는 https://로 시작해야 합니다")
+
 	@Schema(description = "가게 상세 페이지 URL", example = "https://short.url/abc123")
 	private String storeUrl;
 	
-	@Pattern(regexp = "^(https?://)(.*)|^$", message = "URL은 http:// 또는 https://로 시작해야 합니다")
+
 	@Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
 	private String permissionUrl;
 	
@@ -86,6 +85,21 @@ public class StoreRequestDto {
 	@Schema(description = "영업 시간", example = "매일 11:00-22:00")
 	private String businessHours;
 
+	@Size(max = 1000, message = "리뷰 요약은 1000자 이하여야 합니다")
+	@Schema(description = "리뷰 요약", example = "친절한 서비스와 맛있는 음식")
+	private String reviewSummary;
+
+
+	@Schema(description = "가게 평균 별점", example = "4.5")
+	private Float avgRating;
+
+	@Schema(description = "구글 평균 별점", example = "4.3")
+	private Float avgRatingGoogle;
+
+	@Schema(description = "구글 장소 ID", example = "ChIJN1t_tDeuEmsRUsoyG83frY4")
+	private String googlePlaceId;
+
+
 	public Store toEntity(Long userId) {
 		return Store.builder()
 				.userId(userId)
@@ -101,6 +115,10 @@ public class StoreRequestDto {
 				.description(description)
 				.businessNumber(businessNumber)
 				.businessHours(businessHours)
+				.reviewSummary(reviewSummary)
+				.avgRating(avgRating)
+				.avgRatingGoogle(avgRatingGoogle)
+				.googlePlaceId(googlePlaceId)
 				.shareCount(0L) // 초기값 설정
 				.build();
 	}
