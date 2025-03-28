@@ -29,6 +29,6 @@ public class ShortUrlService {
         store.setShareCount(store.getShareCount() + 1);
         storeRepository.save(store);
 
-        return baseUrl + hashcode;
+        return baseUrl + "/s/" + hashcode;
     }
 } 
