@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: luckeat
+  datasource:
+    url: jdbc:mysql://luckeat.cna6sa6wca3e.ap-northeast-2.rds.amazonaws.com:13306/dev?useSSL=true&serverTimezone=UTC
+    username: admin
+    password: n9GjgSok8r-J0DHz
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+# JWT 설정
+jwt:
+  secret-key: luckeat-jwt-secret-key-please-change-in-production-environment-for-security-reasons
+  access-token-validity-in-seconds: 3600 # 1시간
+  refresh-token-validity-in-seconds: 86400 # 24시간
+
+# 애플리케이션 설정
+app:
+  base-url: https://dxa66rf338pjr.cloudfront.net/ # 기본 URL 설정 (개발환경에서는 환경별 yml 파일에서 오버라이드 가능)
