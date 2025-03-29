@@ -42,7 +42,7 @@ public class SecurityConfig {
 						.permitAll().requestMatchers("/api/v1/users/register").permitAll()
 						.requestMatchers("/api/v1/users/register").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
-						.requestMatchers(HttpMethod.GET, "/api/v1/stores").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/stores/**").permitAll()
 						.requestMatchers("/api/v1/permissions/**").authenticated()
 						.requestMatchers("/api/v1/reviews/**").authenticated()
 						.requestMatchers("/api/v1/categories", "/api/v1/categories/**").authenticated().anyRequest()
