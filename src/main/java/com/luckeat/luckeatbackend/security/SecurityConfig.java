@@ -45,6 +45,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/v1/stores/**").permitAll()
 						.requestMatchers("/api/v1/permissions/**").authenticated()
 						.requestMatchers("/api/v1/reviews/**").authenticated()
+						.requestMatchers("/s/**").authenticated()
 						.requestMatchers("/api/v1/categories", "/api/v1/categories/**").authenticated().anyRequest()
 						.authenticated())
 				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, jwtBlacklistService),
