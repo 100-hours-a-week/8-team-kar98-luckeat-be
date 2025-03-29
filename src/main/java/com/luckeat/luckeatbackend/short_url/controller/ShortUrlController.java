@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -15,7 +16,8 @@ import lombok.RequiredArgsConstructor;
 /**
  * 단축 URL 컨트롤러
  */
-@RestController("/s")
+@RestController
+@RequestMapping("/s")
 @RequiredArgsConstructor
 public class ShortUrlController {
 
