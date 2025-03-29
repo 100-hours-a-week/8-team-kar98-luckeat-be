@@ -17,8 +17,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.luckeat.luckeatbackend.common.exception.base.CustomException;
+import com.luckeat.luckeatbackend.common.exception.base.FileUploadException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -135,6 +137,15 @@ public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataI
 		return ResponseEntity.status(500).body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
 	}
 
+	@ExceptionHandler(FileUploadException.class)
+	public ResponseEntity<ErrorResponse> handleFileUploadException(FileUploadException e) {
+		log.error("FileUploadException: {}", e.getMessage());
+		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.FILE_UPLOAD_ERROR, e.getMessage()));
+	}
 
-	  
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+		log.error("MaxUploadSizeExceededException: {}", e.getMessage());
+		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.FILE_UPLOAD_ERROR, "파일 크기가 너무 큽니다"));
+	}
 }
