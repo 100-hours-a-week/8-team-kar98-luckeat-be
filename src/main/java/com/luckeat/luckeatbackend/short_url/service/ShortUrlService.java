@@ -22,13 +22,11 @@ public class ShortUrlService {
     public String getOriginalUrl(String hashCode) {
         Store store = storeRepository.findByStoreUrl(hashCode)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 URL입니다."));
-
-        String hashcode = store.getStoreUrl();
         
         // 공유 카운트 증가
         store.setShareCount(store.getShareCount() + 1);
         storeRepository.save(store);
 
-        return baseUrl + "/s/" + hashcode;
+        return baseUrl + "/store/" + store.getId();
     }
 } 

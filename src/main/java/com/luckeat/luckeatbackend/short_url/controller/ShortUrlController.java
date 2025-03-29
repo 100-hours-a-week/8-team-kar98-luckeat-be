@@ -2,8 +2,6 @@ package com.luckeat.luckeatbackend.short_url.controller;
 
 import java.time.LocalDateTime;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,12 +9,13 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import com.luckeat.luckeatbackend.short_url.service.ShortUrlService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 /**
  * 단축 URL 컨트롤러
  */
-@RestController
+@RestController("/s")
 @RequiredArgsConstructor
 public class ShortUrlController {
 
