@@ -36,7 +36,7 @@ public class ProductService {
 
 	public List<Product> getAllProducts(Long storeId) {
 		Store store = getStoreById(storeId);
-		return productRepository.findByStore(store);
+		return productRepository.findByStoreAndDeletedAtIsNull(store);
 	}
 
 	public Optional<Product> getProductById(Long storeId, Long productId) {
