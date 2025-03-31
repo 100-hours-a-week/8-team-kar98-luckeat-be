@@ -75,7 +75,8 @@ public class ReservationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
         
-        List<Reservation> reservations = reservationRepository.findByUserIdAndDeletedAtIsNull(userId);
+        // deleted_at이 null이 아닌 예약(취소된 예약)도 포함하여 모든 예약 조회
+        List<Reservation> reservations = reservationRepository.findByUserId(userId);
         
         return reservations.stream()
                 .map(ReservationResponseDto::fromEntity)
@@ -98,7 +99,8 @@ public class ReservationService {
         
         // 가게 소유자 확인 로직 추가 필요
         
-        List<Reservation> reservations = reservationRepository.findByStoreIdAndDeletedAtIsNull(storeId);
+        // deleted_at이 null이 아닌 예약(취소된 예약)도 포함하여 모든 예약 조회
+        List<Reservation> reservations = reservationRepository.findByStoreId(storeId);
         
         return reservations.stream()
                 .map(ReservationResponseDto::fromEntity)
@@ -121,7 +123,8 @@ public class ReservationService {
         
         // 가게 소유자 확인 로직 추가 필요
         
-        List<Reservation> reservations = reservationRepository.findByStoreIdAndStatusAndDeletedAtIsNull(
+        // deleted_at이 null이 아닌 예약(취소된 예약)도 포함하여 PENDING 상태 예약 조회
+        List<Reservation> reservations = reservationRepository.findByStoreIdAndStatus(
                 storeId, ReservationStatus.PENDING);
         
         return reservations.stream()
@@ -142,7 +145,7 @@ public class ReservationService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
         
-        Reservation reservation = reservationRepository.findByIdAndDeletedAtIsNull(reservationId)
+        Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ReservationNotFoundException("예약을 찾을 수 없습니다."));
         
         // 사용자 권한 체크
@@ -161,8 +164,7 @@ public class ReservationService {
                 throw new SecurityException("예약을 취소할 권한이 없습니다.");
             }
             
-            // CANCELED 상태로 변경될 때 deleted_at 필드에 현재 시간 설정
-            reservation.setDeletedAt(LocalDateTime.now());
+            // 취소된 예약도 조회 가능하도록 deleted_at 필드를 설정하지 않음
         } else {
             throw new IllegalArgumentException("유효하지 않은 예약 상태입니다.");
         }
