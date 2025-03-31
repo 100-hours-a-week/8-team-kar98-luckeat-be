@@ -44,9 +44,9 @@ public class ProductService {
 		return productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store);
 	}
 
-	public List<Product> getOpenProductsByStoreId(Long storeId) {
+	public List<Product> getAvailableProductsByStoreId(Long storeId) {
 		Store store = getStoreById(storeId);
-		return productRepository.findByStoreAndIsOpenTrue(store);
+		return productRepository.findByStoreAndProductCountGreaterThanAndDeletedAtIsNull(store, 0L);
 	}
 
 	public Optional<Product> getProductById(Long id) {
@@ -78,7 +78,7 @@ public class ProductService {
 		
 		// 해당 가게의 상품인지 확인
 		Store store = getStoreById(storeId);
-		Optional<Product> product = productRepository.findByIdAndStore(productId, store);
+		Optional<Product> product = productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store);
 		if (product.isPresent()) {
 			productRepository.deleteById(productId);
 		} else {
@@ -87,16 +87,47 @@ public class ProductService {
 	}
 
 	@Transactional
-	public Optional<Product> updateProductStatus(Long storeId, Long productId, boolean isOpen) {
+	public Optional<Product> updateProductCount(Long storeId, Long productId, Long count) {
 		// 권한 검증
 		validateStoreOwner(storeId);
 		
 		// 해당 가게의 상품인지 확인
 		Store store = getStoreById(storeId);
-		return productRepository.findByIdAndStore(productId, store).map(product -> {
-			product.setIsOpen(isOpen);
+		return productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store).map(product -> {
+			if (count < 0) {
+				throw new IllegalArgumentException("상품 수량은 0 이상이어야 합니다");
+			}
+			product.setProductCount(count);
 			return productRepository.save(product);
 		});
+	}
+
+	@Transactional
+	public Product decreaseProductCount(Long storeId, Long productId, Long count) {
+		validateStoreOwner(storeId);
+		Store store = getStoreById(storeId);
+		
+		Product product = productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store)
+			.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+			
+		if (product.getProductCount() < count) {
+			throw new IllegalStateException("재고가 부족합니다");
+		}
+		
+		product.setProductCount(product.getProductCount() - count);
+		return productRepository.save(product);
+	}
+
+	@Transactional
+	public Product increaseProductCount(Long storeId, Long productId, Long count) {
+		validateStoreOwner(storeId);
+		Store store = getStoreById(storeId);
+		
+		Product product = productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store)
+			.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+			
+		product.setProductCount(product.getProductCount() + count);
+		return productRepository.save(product);
 	}
 
 	private Store getStoreById(Long storeId) {
