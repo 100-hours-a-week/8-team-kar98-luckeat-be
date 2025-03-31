@@ -26,6 +26,9 @@ public class StoreResponseDto {
 	
 	@Schema(description = "가게 소유자 ID", example = "100")
 	private Long userId;
+
+	@Schema(description = "카테고리 ID", example = "1")
+	private Long categoryId;
 	
 	@Schema(description = "가게 이름", example = "맛있는 국수집")
 	private String storeName;
@@ -82,6 +85,7 @@ public class StoreResponseDto {
 		return StoreResponseDto.builder()
 				.id(store.getId())
 				.userId(store.getUserId())
+				.categoryId(store.getCategoryId())
 				.storeName(store.getStoreName())
 				.storeImg(store.getStoreImg())
 				.address(store.getAddress())
