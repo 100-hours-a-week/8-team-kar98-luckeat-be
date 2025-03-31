@@ -111,6 +111,10 @@ public class Store extends BaseEntity {
 	@Schema(description = "가게에 대한 리뷰 목록")
 	private List<Review> reviews = new ArrayList<>();
 
+	@Column(name = "category_id", nullable = false)
+	@Schema(description = "카테고리 ID", example = "2")
+	private Long categoryId;
+
 	@Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
     @Column(name = "pickup_time", columnDefinition = "TEXT COMMENT '픽업 가능 시간'")
     private String pickupTime;
