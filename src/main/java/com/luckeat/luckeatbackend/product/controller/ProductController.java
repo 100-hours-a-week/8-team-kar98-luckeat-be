@@ -119,7 +119,7 @@ public class ProductController {
 			@PathVariable("product_id") Long productId,
 			@Valid @RequestBody ProductCountRequestDto countRequestDto) {
 		
-		Product product = productService.updateProductCount(storeId, productId, countRequestDto.getCount())
+		Product product = productService.updateProductCount(storeId, productId, countRequestDto.getProductCount())
 				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
 		
 		return ResponseEntity.ok(ProductResponseDto.fromEntity(product));

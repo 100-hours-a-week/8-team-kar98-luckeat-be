@@ -16,5 +16,5 @@ public class ProductCountRequestDto {
     @NotNull(message = "상품 수량은 필수입니다")
     @Min(value = 0, message = "상품 수량은 0 이상이어야 합니다")
     @Schema(description = "상품 수량", example = "10")
-    private Long count;
+    private Long productCount;
 } 

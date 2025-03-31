@@ -3,6 +3,7 @@ package com.luckeat.luckeatbackend.store.dto;
 import java.util.List;
 
 import com.luckeat.luckeatbackend.product.model.Product;
+import com.luckeat.luckeatbackend.product.dto.ProductResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 
@@ -71,6 +72,9 @@ public class StoreDetailResponseDto {
 	@Schema(description = "영업 시간", example = "매일 11:00-22:00")
 	private String businessHours;
 	
+	@Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
+	private String pickupTime;
+	
 	@Schema(description = "가게 평균 별점", example = "4.5")
 	private Float avgRating;
 
@@ -104,6 +108,7 @@ public class StoreDetailResponseDto {
 				.description(store.getDescription())
 				.businessNumber(store.getBusinessNumber())
 				.businessHours(store.getBusinessHours())
+				.pickupTime(store.getPickupTime())
 				.avgRating(store.getAvgRating())
 				.avgRatingGoogle(store.getAvgRatingGoogle())
 				.reviewSummary(store.getReviewSummary())

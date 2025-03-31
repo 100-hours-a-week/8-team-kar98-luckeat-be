@@ -89,6 +89,10 @@ public class StoreRequestDto {
 	@Schema(description = "영업 시간", example = "매일 11:00-22:00")
 	private String businessHours;
 
+	@Size(max = 1000, message = "픽업 시간은 1000자 이하여야 합니다")
+	@Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
+	private String pickupTime;
+
 	@Size(max = 1000, message = "리뷰 요약은 1000자 이하여야 합니다")
 	@Schema(description = "리뷰 요약", example = "친절한 서비스와 맛있는 음식")
 	private String reviewSummary;
@@ -120,6 +124,7 @@ public class StoreRequestDto {
 				.description(description)
 				.businessNumber(businessNumber)
 				.businessHours(businessHours)
+				.pickupTime(pickupTime)
 				.reviewSummary(reviewSummary)
 				.avgRating(avgRating)
 				.avgRatingGoogle(avgRatingGoogle)
