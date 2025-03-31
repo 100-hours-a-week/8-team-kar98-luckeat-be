@@ -32,7 +32,7 @@ import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
-
+import com.luckeat.luckeatbackend.category.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,6 +46,13 @@ public class StoreService {
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
 	private final ReviewRepository reviewRepository;
+	private final CategoryRepository categoryRepository;
+
+	public List<StoreResponseDto> getStoresByCategory(Long categoryId) {
+		return storeRepository.findAllByCategoryId(categoryId).stream().filter(store -> store.getDeletedAt() == null)
+				.map(StoreResponseDto::fromEntity).toList();
+	}
+
 	public List<StoreResponseDto> getAllStores() {
 		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
 	}

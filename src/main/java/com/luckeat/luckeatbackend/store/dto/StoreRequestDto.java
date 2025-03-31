@@ -29,6 +29,10 @@ import lombok.Setter;
 @Builder
 @Schema(description = "가게 등록/수정 요청 DTO")
 public class StoreRequestDto {
+	@NotNull(message = "카테고리 ID는 필수 항목입니다")
+	@Schema(description = "카테고리 ID", example = "1", required = true)
+	private Long categoryId;
+
 	@NotBlank(message = "가게 이름은 필수 항목입니다")
 	@Size(min = 1, max = 255, message = "가게 이름은 1-255자 사이여야 합니다")
 	@Schema(description = "가게 이름", example = "맛있는 국수집", required = true)
@@ -104,6 +108,7 @@ public class StoreRequestDto {
 		return Store.builder()
 				.userId(userId)
 				.storeName(storeName)
+				.categoryId(categoryId)
 				.storeImg(storeImg)
 				.address(address)
 				.website(website)

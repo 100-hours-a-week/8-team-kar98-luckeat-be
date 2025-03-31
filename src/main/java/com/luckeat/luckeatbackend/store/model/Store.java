@@ -111,6 +111,10 @@ public class Store extends BaseEntity {
 	@Schema(description = "가게에 대한 리뷰 목록")
 	private List<Review> reviews = new ArrayList<>();
 
+	@Column(name = "category_id", nullable = false)
+	@Schema(description = "카테고리 ID", example = "2")
+	private Long categoryId;
+
 	public void setStoreUrl(String storeUrl) {
 		this.storeUrl = storeUrl;
 	}
