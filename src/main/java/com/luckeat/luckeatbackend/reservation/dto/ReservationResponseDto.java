@@ -26,6 +26,9 @@ public class ReservationResponseDto {
     @Schema(description = "사용자 ID")
     private Long userId;
     
+    @Schema(description = "사용자 닉네임")
+    private String userNickname;
+    
     @Schema(description = "가게 ID")
     private Long storeId;
     
@@ -57,6 +60,7 @@ public class ReservationResponseDto {
         return ReservationResponseDto.builder()
                 .id(reservation.getId())
                 .userId(reservation.getUser().getId())
+                .userNickname(reservation.getUser().getNickname())
                 .storeId(reservation.getStore().getId())
                 .productId(reservation.getProduct().getId())
                 .storeName(reservation.getStore().getStoreName())

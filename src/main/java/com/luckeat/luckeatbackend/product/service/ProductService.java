@@ -130,6 +130,19 @@ public class ProductService {
 		return productRepository.save(product);
 	}
 
+	@Transactional
+	public Optional<Product> updateProductStatus(Long storeId, Long productId, Boolean isOpen) {
+		// 권한 검증
+		validateStoreOwner(storeId);
+		
+		// 해당 가게의 상품인지 확인
+		Store store = getStoreById(storeId);
+		return productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store).map(product -> {
+			product.setIsOpen(isOpen);
+			return productRepository.save(product);
+		});
+	}
+
 	private Store getStoreById(Long storeId) {
 		return storeRepository.findByIdAndDeletedAtIsNull(storeId)
 				.orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
