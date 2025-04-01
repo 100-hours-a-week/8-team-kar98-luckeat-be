@@ -53,6 +53,9 @@ public class ProductRequestDto {
     @Size(min = 10, max = 1000, message = "상품 설명은 10자 이상 1000자 이하로 입력해주세요")
     @Schema(description = "상품 설명", example = "신선한 재료로 매일 아침 직접 굽는 맛있는 빵입니다! 100% 우유버터를 사용하여 더욱 고소하고 풍미가 좋습니다. :)")
     private String description;
+
+    @Schema(description = "상품 판매 여부", example = "true")
+    private Boolean isOpen;
     
     public Product toEntity() {
         Long finalDiscountedPrice = discountedPrice != null && discountedPrice < originalPrice
@@ -65,6 +68,7 @@ public class ProductRequestDto {
                 .discountedPrice(finalDiscountedPrice)
                 .productCount(productCount)
                 .description(description)
+                .isOpen(isOpen != null ? isOpen : true)
                 .build();
     }
     
@@ -79,5 +83,7 @@ public class ProductRequestDto {
         } else {
             product.setDiscountedPrice(originalPrice);
         }
+
+        product.setIsOpen(isOpen != null ? isOpen : true);
     }
 } 
