@@ -139,4 +139,21 @@ public class ProductController {
 		productService.deleteProduct(storeId, productId);
 		return ResponseEntity.noContent().build();
 	}
+
+	@Operation(summary = "상품 판매 상태 수정", description = "상품의 판매 상태(오픈/마감)를 수정합니다.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "상품 판매 상태 수정 성공"),
+		@ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음", content = @Content)
+	})
+	@PatchMapping("/{product_id}/status")
+	public ResponseEntity<ProductResponseDto> updateProductStatus(
+			@PathVariable("store_id") Long storeId, 
+			@PathVariable("product_id") Long productId,
+			@Valid @RequestBody ProductStatusRequestDto statusRequestDto) {
+		
+		Product product = productService.updateProductStatus(storeId, productId, statusRequestDto.getIsOpen())
+				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+		
+		return ResponseEntity.ok(ProductResponseDto.fromEntity(product));
+	}
 }

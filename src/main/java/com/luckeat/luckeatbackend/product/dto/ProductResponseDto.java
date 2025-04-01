@@ -48,7 +48,7 @@ public class ProductResponseDto {
 				.discountedPrice(product.getDiscountedPrice())
 				.productCount(product.getProductCount())
 				.description(product.getDescription())
-				.isOpen(product.getProductCount() > 0)  // 재고가 있으면 true
+				.isOpen(product.getIsOpen())  // 실제 isOpen 값 사용
 				.build();
 	}
 }
