@@ -66,6 +66,9 @@ public class MyStoreResponseDto {
     @Schema(description = "영업 시간", example = "매일 11:00-22:00")
     private String businessHours;
 
+    @Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
+	private String pickupTime;
+
     public static MyStoreResponseDto fromEntity(Store store) {
         return MyStoreResponseDto.builder()
                 .id(store.getId())
@@ -90,6 +93,7 @@ public class MyStoreResponseDto {
                 .description(store.getDescription())
                 .businessNumber(store.getBusinessNumber())
                 .businessHours(store.getBusinessHours())
+                .pickupTime(store.getPickupTime())
                 .build();
     }
 }
