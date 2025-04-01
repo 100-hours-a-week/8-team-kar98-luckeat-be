@@ -55,9 +55,6 @@ public class StoreRequestDto {
 	@Schema(description = "가게 상세 페이지 URL", example = "https://short.url/abc123")
 	private String storeUrl;
 	
-
-	@Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
-	private String permissionUrl;
 	
 	@NotNull(message = "위도는 필수 항목입니다")
 	@DecimalMin(value = "-90.0", inclusive = true, message = "위도는 -90.0 이상이어야 합니다")
@@ -117,7 +114,6 @@ public class StoreRequestDto {
 				.address(address)
 				.website(website)
 				.storeUrl(storeUrl)
-				.permissionUrl(permissionUrl)
 				.latitude(latitude)
 				.longitude(longitude)
 				.contactNumber(contactNumber)

@@ -53,10 +53,6 @@ public class Store extends BaseEntity {
 	@Column(name = "store_url")
 	private String storeUrl;
 
-	@Schema(description = "리뷰 작성 권한 부여 URL", example = "https://review.url/xyz789")
-	@Column(name = "permission_url")
-	private String permissionUrl;
-
 	@Schema(description = "가게 위치 위도", example = "37.5665")
 	@Column(name = "latitude", nullable = false)
 	private Float latitude;

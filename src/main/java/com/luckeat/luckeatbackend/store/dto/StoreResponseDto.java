@@ -56,9 +56,6 @@ public class StoreResponseDto {
 
 	@Schema(description = "리뷰 요약", example = "친절하고 맛있는 음식점입니다.")
 	private String reviewSummary;
-
-	@Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
-	private String permissionUrl;
 	
 	@Schema(description = "위도", example = "37.123456")
 	private Float latitude;
@@ -98,7 +95,6 @@ public class StoreResponseDto {
 				.avgRating(store.getAvgRating())
 				.avgRatingGoogle(store.getAvgRatingGoogle())
 				.reviewSummary(store.getReviewSummary())
-				.permissionUrl(store.getPermissionUrl())
 				.latitude(store.getLatitude())
 				.longitude(store.getLongitude())
 				.contactNumber(store.getContactNumber())

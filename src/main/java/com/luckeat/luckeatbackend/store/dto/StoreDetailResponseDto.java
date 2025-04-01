@@ -51,9 +51,6 @@ public class StoreDetailResponseDto {
 	@Schema(description = "공유 횟수", example = "42")
 	private Long shareCount;
 	
-	@Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
-	private String permissionUrl;
-	
 	@Schema(description = "위도", example = "37.123456")
 	private Float latitude;
 	
@@ -101,7 +98,9 @@ public class StoreDetailResponseDto {
 				.website(store.getWebsite())
 				.storeUrl(store.getStoreUrl())
 				.shareCount(store.getShareCount())
-				.permissionUrl(store.getPermissionUrl())
+				.avgRating(store.getAvgRating())
+				.avgRatingGoogle(store.getAvgRatingGoogle())
+				.reviewSummary(store.getReviewSummary())
 				.latitude(store.getLatitude())
 				.longitude(store.getLongitude())
 				.contactNumber(store.getContactNumber())
@@ -109,9 +108,6 @@ public class StoreDetailResponseDto {
 				.businessNumber(store.getBusinessNumber())
 				.businessHours(store.getBusinessHours())
 				.pickupTime(store.getPickupTime())
-				.avgRating(store.getAvgRating())
-				.avgRatingGoogle(store.getAvgRatingGoogle())
-				.reviewSummary(store.getReviewSummary())
 				.products(products.stream().map(ProductResponseDto::fromEntity).toList())
 				.reviews(reviews)
 				.build();
