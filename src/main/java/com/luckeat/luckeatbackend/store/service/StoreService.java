@@ -225,10 +225,10 @@ public class StoreService {
 		// - isDiscountOpen=false인 경우: 마감할인 중이 아닌 가게만 표시
 		if (isDiscountOpen != null) {
 			stores = stores.stream().filter(store -> {
-				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품 개수 확인
-				long openProductCount = productRepository.countByStoreIdAndProductCountGreaterThanAndDeletedAtIsNull(store.getId(), 0L);
+				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품이 있는지 확인
+				boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
 				// isDiscountOpen이 true면 마감할인 중인 가게만, false면 마감할인 중이 아닌 가게만 반환
-				return isDiscountOpen ? openProductCount > 0 : openProductCount == 0;
+				return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
 			}).collect(Collectors.toList());
 		}
 

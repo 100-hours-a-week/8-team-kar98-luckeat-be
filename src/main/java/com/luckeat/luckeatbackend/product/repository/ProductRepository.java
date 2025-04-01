@@ -29,4 +29,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	// 1개 이상이면 마감할인 중인 가게임
 	long countByStoreIdAndProductCountGreaterThanAndDeletedAtIsNull(Long storeId, Long count);
 
+    boolean existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(Long storeId);
 }
