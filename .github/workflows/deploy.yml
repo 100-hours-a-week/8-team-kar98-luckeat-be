@@ -1,4 +1,4 @@
-name: 🚀 자동 배포
+name: 🚀 deploy
 
 on:
   push:
