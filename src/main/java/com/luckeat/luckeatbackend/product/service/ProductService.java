@@ -60,6 +60,11 @@ public class ProductService {
 		
 		Store store = getStoreById(storeId);
 		
+		// 해당 가게에 이미 상품이 있는지 확인
+		if (productRepository.existsByStoreIdAndDeletedAtIsNull(storeId)) {
+			throw new IllegalStateException("이미 해당 가게에 등록된 상품이 있습니다.");
+		}
+		
 		// 상품 가격 유효성 검사
 		validateProductPrice(product.getOriginalPrice(), product.getDiscountedPrice());
 		
