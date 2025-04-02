@@ -197,7 +197,14 @@ public class ReservationService {
 
             // 재고 증가 처리
             Product product = reservation.getProduct();
-            product.increaseStock(reservation.getQuantity().intValue());
+            int quantity = reservation.getQuantity().intValue();
+            
+            // 현재 재고가 0이고, 취소된 수량이 0보다 크다면 isOpen을 true로 변경
+            if (product.getProductCount() == 0 && quantity > 0) {
+                product.setIsOpen(true);
+            }
+            
+            product.increaseStock(quantity);
             
             // 예약 취소 처리
             reservation.setStatus(status);
