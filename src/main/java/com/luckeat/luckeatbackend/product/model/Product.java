@@ -51,4 +51,35 @@ public class Product extends BaseEntity {
     @Column(name = "is_open", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE COMMENT '상품 판매 여부'")
     private Boolean isOpen = true;
 
+
+	 public void decreaseStock(int quantity) {
+        validateDecreaseStockQuantity(quantity);
+        this.productCount -= quantity;
+    }
+
+    public void increaseStock(int quantity) {
+        validateIncreaseStockQuantity(quantity);
+        this.productCount += quantity;
+    }
+    
+    private void validateDecreaseStockQuantity(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("수량은 0보다 작을 수 없습니다.");
+        }
+        
+        if (this.productCount < quantity) {
+            throw new IllegalStateException("재고가 부족합니다. 현재 재고: " + this.productCount);
+        }
+    }
+    
+    private void validateIncreaseStockQuantity(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("수량은 0보다 작을 수 없습니다.");
+        }
+        
+        // 필요한 경우 최대 재고 제한을 추가할 수 있습니다
+        if (this.productCount + quantity > Integer.MAX_VALUE) {
+            throw new IllegalStateException("재고 최대치를 초과할 수 없습니다.");
+        }
+    }
 }

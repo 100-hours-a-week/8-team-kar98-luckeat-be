@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.luckeat.luckeatbackend.product.repository.ProductRepository;
 import com.luckeat.luckeatbackend.reservation.dto.ReservationRequestDto;
 import com.luckeat.luckeatbackend.reservation.dto.ReservationResponseDto;
 import com.luckeat.luckeatbackend.reservation.dto.ReservationStatusRequestDto;
@@ -34,6 +35,8 @@ import lombok.RequiredArgsConstructor;
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final ProductRepository productRepository; // 추가 필요
+    
     
     /**
      * 새로운 예약을 생성합니다.

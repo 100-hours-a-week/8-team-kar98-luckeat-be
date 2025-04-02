@@ -43,24 +43,33 @@ public class ReservationService {
     public ReservationResponseDto createReservation(Long storeId, ReservationRequestDto requestDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
-        
+
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
         
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
         
+         
         Product product = productRepository.findById(requestDto.getProductId())
                 .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다."));
-        
+
         // 상품이 해당 가게의 것인지 확인
         if (!product.getStore().getId().equals(storeId)) {
             throw new ProductNotFoundException("해당 가게의 상품이 아닙니다.");
         }
         
+        if (product.getProductCount() < requestDto.getQuantity()) {
+            throw new IllegalStateException("재고가 부족합니다.");
+        }
+
+        product.decreaseStock(requestDto.getQuantity().intValue());
+        
+        
         Reservation reservation = requestDto.toEntity(user, store, product);
         Reservation savedReservation = reservationRepository.save(reservation);
         
+       
         return ReservationResponseDto.fromEntity(savedReservation);
     }
     
@@ -152,26 +161,52 @@ public class ReservationService {
         boolean isStoreOwner = reservation.getStore().getUserId().equals(user.getId());
         boolean isReservationUser = reservation.getUser().getId().equals(user.getId());
         
+        // 이미 삭제된 예약인지 확인
+        if (reservation.getDeletedAt() != null) {
+            throw new IllegalStateException("이미 취소된 예약입니다.");
+        }
+
         // 권한 검증
         if (status == ReservationStatus.CONFIRMED) {
             // CONFIRMED는 가게 소유자만 가능
             if (!isStoreOwner) {
                 throw new SecurityException("예약 상태를 변경할 권한이 없습니다.");
             }
+        reservation.setStatus(status);
+        reservation.setDeletedAt(LocalDateTime.now());
+        
+        // 유저의 총 상품 갯수와 절약 금액 업데이트
+        User reservationUser = reservation.getUser();
+        Product product = reservation.getProduct();
+        
+        int quantity = reservation.getQuantity().intValue();
+        // 총 상품 갯수 증가 (예약한 수량만큼 증가)
+        reservationUser.setTotalProductCount(
+            reservationUser.getTotalProductCount() + quantity
+        );
+        
+        // 절약 금액 계산 및 추가
+        long savedMoney = ((long) product.getOriginalPrice() - product.getDiscountedPrice()) * quantity;
+        reservationUser.setTotalSavedMoney(reservationUser.getTotalSavedMoney() + (int) savedMoney);
+        userRepository.save(reservationUser);
         } else if (status == ReservationStatus.CANCELED) {
             // CANCELED는 예약자 본인 또는 가게 소유자만 가능
             if (!isReservationUser && !isStoreOwner) {
                 throw new SecurityException("예약을 취소할 권한이 없습니다.");
             }
+
+            // 재고 증가 처리
+            Product product = reservation.getProduct();
+            product.increaseStock(reservation.getQuantity().intValue());
             
-            // 취소된 예약도 조회 가능하도록 deleted_at 필드를 설정하지 않음
+            // 예약 취소 처리
+            reservation.setStatus(status);
+            reservation.setDeletedAt(LocalDateTime.now());  // 취소 시간 설정
         } else {
             throw new IllegalArgumentException("유효하지 않은 예약 상태입니다.");
         }
         
-        reservation.setStatus(status);
         Reservation updatedReservation = reservationRepository.save(reservation);
-        
         return ReservationResponseDto.fromEntity(updatedReservation);
     }
     
