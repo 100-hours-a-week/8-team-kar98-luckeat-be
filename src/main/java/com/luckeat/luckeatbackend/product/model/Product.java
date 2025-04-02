@@ -55,6 +55,11 @@ public class Product extends BaseEntity {
 	 public void decreaseStock(int quantity) {
         validateDecreaseStockQuantity(quantity);
         this.productCount -= quantity;
+        
+        // 재고가 0이 되면 isOpen을 false로 변경
+        if (this.productCount == 0) {
+            this.isOpen = false;
+        }
     }
 
     public void increaseStock(int quantity) {
