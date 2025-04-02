@@ -3,6 +3,7 @@ package com.luckeat.luckeatbackend.store.dto;
 import java.util.List;
 
 import com.luckeat.luckeatbackend.product.model.Product;
+import com.luckeat.luckeatbackend.product.dto.ProductResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 
@@ -28,6 +29,9 @@ public class StoreDetailResponseDto {
 	
 	@Schema(description = "가게 소유자 ID", example = "100")
 	private Long userId;
+
+	@Schema(description = "카테고리 ID", example = "1")
+	private Long categoryId;
 	
 	@Schema(description = "가게 이름", example = "맛있는 국수집")
 	private String storeName;
@@ -47,9 +51,6 @@ public class StoreDetailResponseDto {
 	@Schema(description = "공유 횟수", example = "42")
 	private Long shareCount;
 	
-	@Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
-	private String permissionUrl;
-	
 	@Schema(description = "위도", example = "37.123456")
 	private Float latitude;
 	
@@ -67,6 +68,9 @@ public class StoreDetailResponseDto {
 	
 	@Schema(description = "영업 시간", example = "매일 11:00-22:00")
 	private String businessHours;
+	
+	@Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
+	private String pickupTime;
 	
 	@Schema(description = "가게 평균 별점", example = "4.5")
 	private Float avgRating;
@@ -87,22 +91,23 @@ public class StoreDetailResponseDto {
 		return StoreDetailResponseDto.builder()
 				.id(store.getId())
 				.userId(store.getUserId())
+				.categoryId(store.getCategoryId())
 				.storeName(store.getStoreName())
 				.storeImg(store.getStoreImg())
 				.address(store.getAddress())
 				.website(store.getWebsite())
 				.storeUrl(store.getStoreUrl())
 				.shareCount(store.getShareCount())
-				.permissionUrl(store.getPermissionUrl())
+				.avgRating(store.getAvgRating())
+				.avgRatingGoogle(store.getAvgRatingGoogle())
+				.reviewSummary(store.getReviewSummary())
 				.latitude(store.getLatitude())
 				.longitude(store.getLongitude())
 				.contactNumber(store.getContactNumber())
 				.description(store.getDescription())
 				.businessNumber(store.getBusinessNumber())
 				.businessHours(store.getBusinessHours())
-				.avgRating(store.getAvgRating())
-				.avgRatingGoogle(store.getAvgRatingGoogle())
-				.reviewSummary(store.getReviewSummary())
+				.pickupTime(store.getPickupTime())
 				.products(products.stream().map(ProductResponseDto::fromEntity).toList())
 				.reviews(reviews)
 				.build();

@@ -32,7 +32,7 @@ import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
-
+import com.luckeat.luckeatbackend.category.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,6 +46,13 @@ public class StoreService {
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
 	private final ReviewRepository reviewRepository;
+	private final CategoryRepository categoryRepository;
+
+	public List<StoreResponseDto> getStoresByCategory(Long categoryId) {
+		return storeRepository.findAllByCategoryId(categoryId).stream().filter(store -> store.getDeletedAt() == null)
+				.map(StoreResponseDto::fromEntity).toList();
+	}
+
 	public List<StoreResponseDto> getAllStores() {
 		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
 	}
@@ -218,10 +225,10 @@ public class StoreService {
 		// - isDiscountOpen=false인 경우: 마감할인 중이 아닌 가게만 표시
 		if (isDiscountOpen != null) {
 			stores = stores.stream().filter(store -> {
-				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품 개수 확인
-				long openProductCount = productRepository.countByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
+				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품이 있는지 확인
+				boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
 				// isDiscountOpen이 true면 마감할인 중인 가게만, false면 마감할인 중이 아닌 가게만 반환
-				return isDiscountOpen ? openProductCount > 0 : openProductCount == 0;
+				return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
 			}).collect(Collectors.toList());
 		}
 

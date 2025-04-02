@@ -14,6 +14,9 @@ public class MyStoreResponseDto {
     
     @Schema(description = "가게 소유자 ID", example = "100")
     private Long userId;
+
+    @Schema(description = "카테고리 ID", example = "1")
+    private Long categoryId;
     
     @Schema(description = "가게 이름", example = "맛있는 국수집")
     private String storeName;
@@ -45,9 +48,6 @@ public class MyStoreResponseDto {
     @Schema(description = "리뷰 수", example = "10")
     private Long reviewCount;
     
-    @Schema(description = "리뷰 작성 권한 URL", example = "https://review.url/xyz789")
-    private String permissionUrl;
-    
     @Schema(description = "위도", example = "37.123456")
     private Float latitude;
     
@@ -66,6 +66,9 @@ public class MyStoreResponseDto {
     @Schema(description = "영업 시간", example = "매일 11:00-22:00")
     private String businessHours;
 
+    @Schema(description = "픽업 가능 시간", example = "12:00-13:00, 17:00-18:00")
+	private String pickupTime;
+
     public static MyStoreResponseDto fromEntity(Store store) {
         return MyStoreResponseDto.builder()
                 .id(store.getId())
@@ -75,6 +78,7 @@ public class MyStoreResponseDto {
                 .address(store.getAddress())
                 .website(store.getWebsite())
                 .storeUrl(store.getStoreUrl())
+                .categoryId(store.getCategoryId())
                 .shareCount(store.getShareCount())
                 .avgRating(store.getAvgRating())
                 .avgRatingGoogle(store.getAvgRatingGoogle())
@@ -83,13 +87,13 @@ public class MyStoreResponseDto {
                     store.getReviews().stream()
                         .filter(review -> review.getDeletedAt() == null)
                         .count() : 0L)
-                .permissionUrl(store.getPermissionUrl())
                 .latitude(store.getLatitude())
                 .longitude(store.getLongitude())
                 .contactNumber(store.getContactNumber())
                 .description(store.getDescription())
                 .businessNumber(store.getBusinessNumber())
                 .businessHours(store.getBusinessHours())
+                .pickupTime(store.getPickupTime())
                 .build();
     }
 }

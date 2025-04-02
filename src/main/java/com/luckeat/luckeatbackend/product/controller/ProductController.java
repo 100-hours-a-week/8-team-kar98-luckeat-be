@@ -20,6 +20,7 @@ import com.luckeat.luckeatbackend.common.exception.product.ProductNotFoundExcept
 import com.luckeat.luckeatbackend.product.dto.ProductRequestDto;
 import com.luckeat.luckeatbackend.product.dto.ProductResponseDto;
 import com.luckeat.luckeatbackend.product.dto.ProductStatusRequestDto;
+import com.luckeat.luckeatbackend.product.dto.ProductCountRequestDto;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.service.ProductService;
 
@@ -45,7 +46,9 @@ public class ProductController {
 		@ApiResponse(responseCode = "200", description = "상품 목록 조회 성공")
 	})
 	@GetMapping
-	public ResponseEntity<List<ProductResponseDto>> getAllProducts(@PathVariable("store_id") Long storeId) {
+	public ResponseEntity<List<ProductResponseDto>> getAllProducts(
+			@Parameter(description = "가게 ID", required = true)
+			@PathVariable("store_id") Long storeId) {
 		List<ProductResponseDto> productResponses = productService.getAllProducts(storeId).stream()
 				.map(ProductResponseDto::fromEntity)
 				.collect(Collectors.toList());
@@ -67,10 +70,15 @@ public class ProductController {
 	@Operation(summary = "상품 등록", description = "새로운 상품을 등록합니다.")
 	@ApiResponses({
 		@ApiResponse(responseCode = "201", description = "상품 등록 성공"),
-		@ApiResponse(responseCode = "400", description = "잘못된 요청", content = @Content)
+		@ApiResponse(responseCode = "400", description = "잘못된 요청", content = @Content),
+		@ApiResponse(responseCode = "403", description = "권한 없음", content = @Content)
 	})
 	@PostMapping
-	public ResponseEntity<ProductResponseDto> createProduct(@PathVariable("store_id") Long storeId, @Valid @RequestBody ProductRequestDto productRequestDto) {
+	public ResponseEntity<ProductResponseDto> createProduct(
+			@Parameter(description = "가게 ID", required = true)
+			@PathVariable("store_id") Long storeId,
+			@Parameter(description = "상품 정보", required = true)
+			@Valid @RequestBody ProductRequestDto productRequestDto) {
 		Product product = productRequestDto.toEntity();
 		Product savedProduct = productService.saveProduct(storeId, product);
 		return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponseDto.fromEntity(savedProduct));
@@ -79,12 +87,17 @@ public class ProductController {
 	@Operation(summary = "상품 정보 수정", description = "기존 상품의 정보를 수정합니다.")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "상품 정보 수정 성공"),
+		@ApiResponse(responseCode = "400", description = "잘못된 요청", content = @Content),
+		@ApiResponse(responseCode = "403", description = "권한 없음", content = @Content),
 		@ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음", content = @Content)
 	})
 	@PutMapping("/{product_id}")
 	public ResponseEntity<ProductResponseDto> updateProduct(
-			@PathVariable("store_id") Long storeId, 
+			@Parameter(description = "가게 ID", required = true)
+			@PathVariable("store_id") Long storeId,
+			@Parameter(description = "상품 ID", required = true)
 			@PathVariable("product_id") Long productId,
+			@Parameter(description = "수정할 상품 정보", required = true)
 			@Valid @RequestBody ProductRequestDto productRequestDto) {
 		
 		Product existingProduct = productService.getProductById(storeId, productId)
@@ -95,18 +108,18 @@ public class ProductController {
 		return ResponseEntity.ok(ProductResponseDto.fromEntity(updatedProduct));
 	}
 
-	@Operation(summary = "상품 상태 수정", description = "상품의 상태를 수정합니다 (open/close).")
+	@Operation(summary = "상품 수량 수정", description = "상품의 수량을 수정합니다.")
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "상품 상태 수정 성공"),
+		@ApiResponse(responseCode = "200", description = "상품 수량 수정 성공"),
 		@ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음", content = @Content)
 	})
-	@PatchMapping("/{product_id}/status")
-	public ResponseEntity<ProductResponseDto> updateProductStatus(
+	@PatchMapping("/{product_id}/count")
+	public ResponseEntity<ProductResponseDto> updateProductCount(
 			@PathVariable("store_id") Long storeId, 
 			@PathVariable("product_id") Long productId,
-			@Valid @RequestBody ProductStatusRequestDto statusRequestDto) {
+			@Valid @RequestBody ProductCountRequestDto countRequestDto) {
 		
-		Product product = productService.updateProductStatus(storeId, productId, statusRequestDto.getIsOpen())
+		Product product = productService.updateProductCount(storeId, productId, countRequestDto.getProductCount())
 				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
 		
 		return ResponseEntity.ok(ProductResponseDto.fromEntity(product));
@@ -125,5 +138,22 @@ public class ProductController {
 		
 		productService.deleteProduct(storeId, productId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@Operation(summary = "상품 판매 상태 수정", description = "상품의 판매 상태(오픈/마감)를 수정합니다.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "상품 판매 상태 수정 성공"),
+		@ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음", content = @Content)
+	})
+	@PatchMapping("/{product_id}/status")
+	public ResponseEntity<ProductResponseDto> updateProductStatus(
+			@PathVariable("store_id") Long storeId, 
+			@PathVariable("product_id") Long productId,
+			@Valid @RequestBody ProductStatusRequestDto statusRequestDto) {
+		
+		Product product = productService.updateProductStatus(storeId, productId, statusRequestDto.getIsOpen())
+				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+		
+		return ResponseEntity.ok(ProductResponseDto.fromEntity(product));
 	}
 }
