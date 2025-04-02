@@ -30,4 +30,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	long countByStoreIdAndProductCountGreaterThanAndDeletedAtIsNull(Long storeId, Long count);
 
     boolean existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(Long storeId);
+
+    boolean existsByStoreIdAndDeletedAtIsNull(Long storeId);
 }
