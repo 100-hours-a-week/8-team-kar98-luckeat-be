@@ -148,6 +148,12 @@ public class ProductService {
 		}
 		
 		product.setProductCount(product.getProductCount() - count);
+		
+		// 재고가 0이 되면 isOpen을 false로 변경
+		if (product.getProductCount() == 0) {
+			product.setIsOpen(false);
+		}
+		
 		return productRepository.save(product);
 	}
 
