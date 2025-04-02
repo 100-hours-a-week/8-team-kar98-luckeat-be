@@ -83,7 +83,5 @@ public class ProductRequestDto {
         } else {
             product.setDiscountedPrice(originalPrice);
         }
-
-        product.setIsOpen(isOpen != null ? isOpen : true);
     }
 } 

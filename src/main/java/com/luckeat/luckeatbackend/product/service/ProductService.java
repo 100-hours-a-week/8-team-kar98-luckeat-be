@@ -20,6 +20,7 @@ import com.luckeat.luckeatbackend.product.repository.ProductRepository;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,16 +55,16 @@ public class ProductService {
 	}
 
 	@Transactional
-	public Product saveProduct(Long storeId, Product product) {
+	public Product createProduct(Long storeId, Product product) {
 		// 권한 검증
 		validateStoreOwner(storeId);
-		
-		Store store = getStoreById(storeId);
 		
 		// 해당 가게에 이미 상품이 있는지 확인
 		if (productRepository.existsByStoreIdAndDeletedAtIsNull(storeId)) {
 			throw new IllegalStateException("이미 해당 가게에 등록된 상품이 있습니다.");
 		}
+		
+		Store store = getStoreById(storeId);
 		
 		// 상품 가격 유효성 검사
 		validateProductPrice(product.getOriginalPrice(), product.getDiscountedPrice());
@@ -74,6 +75,33 @@ public class ProductService {
 		
 		product.setStore(store);
 		return productRepository.save(product);
+	}
+
+	@Transactional
+	public Product updateProduct(Long storeId, Long productId, Product product) {
+		// 권한 검증
+		validateStoreOwner(storeId);
+		
+		// 기존 상품 조회
+		Product existingProduct = productRepository.findById(productId)
+			.orElseThrow(() -> new EntityNotFoundException("상품을 찾을 수 없습니다."));
+		
+		// 상품이 해당 가게의 것인지 확인
+		if (!existingProduct.getStore().getId().equals(storeId)) {
+			throw new IllegalStateException("해당 가게의 상품이 아닙니다.");
+		}
+		
+		// 상품 가격 유효성 검사
+		validateProductPrice(product.getOriginalPrice(), product.getDiscountedPrice());
+		
+		// 상품 정보 업데이트
+		existingProduct.setProductName(product.getProductName());
+		existingProduct.setOriginalPrice(product.getOriginalPrice());
+		existingProduct.setDiscountedPrice(product.getDiscountedPrice());
+		existingProduct.setProductCount(product.getProductCount());
+		existingProduct.setDescription(product.getDescription());
+		
+		return productRepository.save(existingProduct);
 	}
 
 	@Transactional
