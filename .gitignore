@@ -110,3 +110,6 @@ package-lock.json
 yarn.lock
 
 /bin
+
+### env
+.env
