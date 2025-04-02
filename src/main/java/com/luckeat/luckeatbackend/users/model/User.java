@@ -39,7 +39,7 @@ public class User extends BaseEntity {
 	private Integer totalSavedMoney; // 총 아낀 금액
 
 	@Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
-	private Integer totalOrderCount; // 총 주문 건수
+    private Integer totalProductCount; // 총 상품 갯수
 
 	public enum Role {
 		BUYER, SELLER, ADMIN

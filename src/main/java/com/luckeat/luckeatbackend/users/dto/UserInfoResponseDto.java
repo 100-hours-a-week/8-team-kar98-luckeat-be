@@ -38,8 +38,8 @@ public class UserInfoResponseDto {
 	@Schema(description = "총 아낀 금액", example = "15000")
 	private Integer totalSavedMoney;
 	
-	@Schema(description = "총 주문 건수", example = "5")
-	private Integer totalOrderCount;
+	@Schema(description = "총 상품 갯수", example = "5")
+	private Integer totalProductCount;
 
 	public static UserInfoResponseDto fromEntity(User user) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss");
@@ -50,7 +50,7 @@ public class UserInfoResponseDto {
 				.createdAt(user.getCreatedAt())
 				.updatedAt(user.getUpdatedAt())
 				.totalSavedMoney(user.getTotalSavedMoney())
-				.totalOrderCount(user.getTotalOrderCount())
+				.totalProductCount(user.getTotalProductCount())
 				.build();
 	}
 }

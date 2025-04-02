@@ -148,4 +148,10 @@ public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataI
 		log.error("MaxUploadSizeExceededException: {}", e.getMessage());
 		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.FILE_UPLOAD_ERROR, "파일 크기가 너무 큽니다"));
 	}
+
+	@ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException e) {
+        log.error("IllegalStateException: {}", e.getMessage());
+        return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST, e.getMessage()));
+    }
 }
