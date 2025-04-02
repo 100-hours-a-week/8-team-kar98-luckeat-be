@@ -80,7 +80,7 @@ public class ProductController {
 			@Parameter(description = "상품 정보", required = true)
 			@Valid @RequestBody ProductRequestDto productRequestDto) {
 		Product product = productRequestDto.toEntity();
-		Product savedProduct = productService.saveProduct(storeId, product);
+		Product savedProduct = productService.createProduct(storeId, product);
 		return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponseDto.fromEntity(savedProduct));
 	}
 
@@ -104,7 +104,7 @@ public class ProductController {
 				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
 		
 		productRequestDto.updateEntity(existingProduct);
-		Product updatedProduct = productService.saveProduct(storeId, existingProduct);
+		Product updatedProduct = productService.updateProduct(storeId, productId, existingProduct);
 		return ResponseEntity.ok(ProductResponseDto.fromEntity(updatedProduct));
 	}
 
