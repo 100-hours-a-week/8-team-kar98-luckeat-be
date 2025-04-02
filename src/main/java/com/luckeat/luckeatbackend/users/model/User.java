@@ -35,6 +35,12 @@ public class User extends BaseEntity {
 	@Column(nullable = false, unique = true, length = 50)
 	private String nickname; // 회원 닉네임 (UNIQUE)
 
+	@Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
+	private Integer totalSavedMoney; // 총 아낀 금액
+
+	@Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
+	private Integer totalOrderCount; // 총 주문 건수
+
 	public enum Role {
 		BUYER, SELLER, ADMIN
 	}
