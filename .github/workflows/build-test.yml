@@ -31,26 +31,14 @@ jobs:
         run: |
           if [[ "${{ github.base_ref }}" == "main" ]]; then
             echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
-            echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
           else
             echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
-            echo "SENTRY_ENVIRONMENT=development" >> $GITHUB_ENV
           fi
 
       - name: Create application.yml
         run: |
           mkdir -p src/main/resources
           echo "${{ env.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
-
-      - name: Create Sentry release
-        uses: getsentry/action-release@v1
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ktb-sh
-          SENTRY_PROJECT: sentry-back
-        with:
-          environment: ${{ env.SENTRY_ENVIRONMENT }}
-          version: ${{ github.sha }}
 
       - name: Build and Run Tests
         run: ./gradlew clean build --console=verbose
