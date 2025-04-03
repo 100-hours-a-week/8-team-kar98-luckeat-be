@@ -51,7 +51,7 @@ public class ReservationService {
                 .orElseThrow(() -> new StoreNotFoundException("가게를 찾을 수 없습니다."));
         
          
-        Product product = productRepository.findById(requestDto.getProductId())
+        Product product = productRepository.findByIdWithPessimisticLock(requestDto.getProductId())
                 .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다."));
 
         // 상품이 해당 가게의 것인지 확인
@@ -63,8 +63,18 @@ public class ReservationService {
             throw new IllegalStateException("재고가 부족합니다.");
         }
 
-        product.decreaseStock(requestDto.getQuantity().intValue());
-        
+         int updatedRows = productRepository.decreaseProductStock(
+                requestDto.getProductId(), 
+                requestDto.getQuantity().intValue()
+         );
+    
+        if (updatedRows == 0) {
+                throw new IllegalStateException("재고가 부족합니다.");
+        }
+            
+        product = productRepository.findByIdAndDeletedAtIsNull(requestDto.getProductId())
+            .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다."));
+    
         
         Reservation reservation = requestDto.toEntity(user, store, product);
         Reservation savedReservation = reservationRepository.save(reservation);
@@ -195,16 +205,22 @@ public class ReservationService {
                 throw new SecurityException("예약을 취소할 권한이 없습니다.");
             }
 
+            // 비관적 락으로 상품 조회
+            Product product = productRepository.findByIdWithPessimisticLock(reservation.getProduct().getId())
+                    .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다."));
+
             // 재고 증가 처리
-            Product product = reservation.getProduct();
             int quantity = reservation.getQuantity().intValue();
             
-            // 현재 재고가 0이고, 취소된 수량이 0보다 크다면 isOpen을 true로 변경
-            if (product.getProductCount() == 0 && quantity > 0) {
-                product.setIsOpen(true);
+            // 재고 증가 시도
+            int updatedRows = productRepository.increaseProductStock(
+                product.getId(), 
+                quantity
+            );
+                
+            if (updatedRows == 0) {
+                throw new IllegalStateException("재고 증가 처리 중 오류가 발생했습니다.");
             }
-            
-            product.increaseStock(quantity);
             
             // 예약 취소 처리
             reservation.setStatus(status);
