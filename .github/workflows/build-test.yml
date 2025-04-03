@@ -31,14 +31,16 @@ jobs:
         run: |
           if [[ "${{ github.base_ref }}" == "main" ]]; then
             echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+            
           else
             echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+            
           fi
-
       - name: Create application.yml
         run: |
           mkdir -p src/main/resources
           echo "${{ env.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+
 
       - name: Build and Run Tests
         run: ./gradlew clean build --console=verbose
