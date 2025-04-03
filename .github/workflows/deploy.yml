@@ -5,12 +5,12 @@ on:
     branches:
       - develop
       - main
-  workflow_dispatch:  # 수동 실행 가능
+  workflow_dispatch: # 수동 실행 가능
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       # 1️⃣ 환경 변수 설정
       - name: Set environment variables
@@ -34,8 +34,8 @@ jobs:
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}  # 공통 사용자 이름 사용
-          key: ${{ secrets.EC2_SSH_KEY }}  # 공통 SSH 키 사용
+          username: ${{ secrets.EC2_USER }} # 공통 사용자 이름 사용
+          key: ${{ secrets.EC2_SSH_KEY }} # 공통 SSH 키 사용
           port: 22
           script_stop: true
           debug: true
@@ -46,4 +46,4 @@ jobs:
             echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
             echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
             bash deploy.sh
-            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료" 
+            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료"
