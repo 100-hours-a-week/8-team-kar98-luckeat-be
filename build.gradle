@@ -63,8 +63,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Bucket4j (API Rate Limiting)
-    implementation 'com.bucket4j:bucket4j-core:8.10.0' // 코어 라이브러리 버전 업데이트
-    implementation 'com.giffing.bucket4j.spring.boot.starter:bucket4j-spring-boot-starter:0.12.8' // 스프링 부트 스타터 버전 업데이트
+    // implementation 'com.bucket4j:bucket4j-core:8.10.0' // 코어 라이브러리 버전 업데이트
+    // implementation 'com.giffing.bucket4j.spring.boot.starter:bucket4j-spring-boot-starter:0.12.8' // 스프링 부트 스타터 버전 업데이트
 }
 
 tasks.named('test') {
