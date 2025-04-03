@@ -21,10 +21,13 @@ import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewUpdateDto;
 import com.luckeat.luckeatbackend.review.model.Review;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
-import com.luckeat.luckeatbackend.reviewpermission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 import com.luckeat.luckeatbackend.store.service.StoreService;
+import com.luckeat.luckeatbackend.reservation.service.ReservationService;
+import com.luckeat.luckeatbackend.reservation.model.Reservation;
+import com.luckeat.luckeatbackend.reservation.model.Reservation.ReservationStatus;
+import com.luckeat.luckeatbackend.reservation.dto.ReservationResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,9 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
-	private final ReviewPermissionService permissionService;
 	private final UserService userService;
 	private final StoreService storeService;
+	private final ReservationService reservationService;
 
 	public List<ReviewResponseDto> getAllReviews() {
 		Long userId = getCurrentUserId();
@@ -80,8 +83,14 @@ public class ReviewService {
 		Long userId = getCurrentUserId();
 		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
-		if (!permissionService.hasPermission(userId, requestDto.getStoreId())) {
-			throw new ReviewForbiddenException();
+		// 예약 확인 로직 추가
+		List<ReservationResponseDto> userReservations = reservationService.getUserReservationsById(userId);
+		boolean hasConfirmedReservation = userReservations.stream()
+			.filter(reservation -> reservation.getStoreId().equals(requestDto.getStoreId()))
+			.anyMatch(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED);
+
+		if (!hasConfirmedReservation) {
+			throw new IllegalStateException("리뷰를 작성하려면 해당 가게에서 CONFIRMED 상태의 예약이 필요합니다.");
 		}
 
 		Review review = new Review();
@@ -93,7 +102,6 @@ public class ReviewService {
 
 		reviewRepository.save(review);
 		updateStoreAverageRating(requestDto.getStoreId());
-		
 	}
 
 	@Transactional
