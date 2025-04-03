@@ -234,4 +234,10 @@ public class ReservationService {
         reservation.setDeletedAt(LocalDateTime.now());
         reservationRepository.save(reservation);
     }
+
+    @Transactional(readOnly = true)
+    public Reservation getReservationById(Long reservationId) {
+        return reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ReservationNotFoundException("예약을 찾을 수 없습니다."));
+    }
 } 

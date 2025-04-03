@@ -24,6 +24,9 @@ public class Review extends BaseEntity {
 	@Column(name = "store_id", nullable = false)
 	private Long storeId;
 
+	@Column(name = "reservation_id", nullable = false)
+	private Long reservationId;
+
 	@Column(name = "rating", nullable = false)
 	private Integer rating;
 
