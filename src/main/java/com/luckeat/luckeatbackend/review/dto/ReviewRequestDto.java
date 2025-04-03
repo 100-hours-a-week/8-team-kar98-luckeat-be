@@ -21,6 +21,10 @@ public class ReviewRequestDto {
 	@Schema(description = "스토어 ID", example = "123")
 	private Long storeId;
 	
+	@NotNull(message = "예약 ID는 필수입니다")
+	@Schema(description = "예약 ID", example = "123")
+	private Long reservationId;
+	
 	@NotNull(message = "평점은 필수입니다")
 	@Min(value = 1, message = "평점은 1~5 사이여야 합니다")
 	@Max(value = 5, message = "평점은 1~5 사이여야 합니다")

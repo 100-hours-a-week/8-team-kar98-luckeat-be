@@ -81,19 +81,30 @@ public class ReviewService {
 	@Transactional
 	public void createReview(ReviewRequestDto requestDto) {
 		Long userId = getCurrentUserId();
-	
 
-		// 예약 확인 로직 추가
-		List<ReservationResponseDto> userReservations = reservationService.getUserReservationsById(userId);
-		ReservationResponseDto confirmedReservation = userReservations.stream()
-			.filter(reservation -> reservation.getStoreId().equals(requestDto.getStoreId()))
-			.filter(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED)
-			.findFirst()
-			.orElseThrow(() -> new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태의 예약이 필요합니다.)"));
+		// 예약 확인
+		Reservation reservation = reservationService.getReservationById(requestDto.getReservationId());
+		
+		// 예약이 현재 사용자의 것인지 확인
+		if (!reservation.getUser().getId().equals(userId)) {
+			throw new IllegalStateException("해당 예약에 대한 권한이 없습니다.");
+		}
+		
+		// 예약이 CONFIRMED 상태인지 확인
+		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+			throw new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태의 예약이 필요합니다.)");
+		}
+
+		// 해당 예약에 대한 리뷰가 이미 존재하는지 확인
+		Optional<Review> existingReview = reviewRepository.findByReservationId(requestDto.getReservationId());
+		if (existingReview.isPresent()) {
+			throw new IllegalStateException("이미 해당 예약에 대한 리뷰를 작성했습니다.");
+		}
 
 		Review review = new Review();
 		review.setUserId(userId);
 		review.setStoreId(requestDto.getStoreId());
+		review.setReservationId(requestDto.getReservationId());
 		review.setRating(requestDto.getRating());
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
