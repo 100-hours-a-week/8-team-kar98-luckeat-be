@@ -81,17 +81,16 @@ public class ReviewService {
 	@Transactional
 	public void createReview(ReviewRequestDto requestDto) {
 		Long userId = getCurrentUserId();
-		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
+	
 
 		// 예약 확인 로직 추가
 		List<ReservationResponseDto> userReservations = reservationService.getUserReservationsById(userId);
-		boolean hasConfirmedReservation = userReservations.stream()
+		ReservationResponseDto confirmedReservation = userReservations.stream()
 			.filter(reservation -> reservation.getStoreId().equals(requestDto.getStoreId()))
-			.anyMatch(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED);
-
-		if (!hasConfirmedReservation) {
-			throw new IllegalStateException("리뷰를 작성하려면 해당 가게에서 CONFIRMED 상태의 예약이 필요합니다.");
-		}
+			.filter(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED)
+			.filter(reservation -> !reservation.getIsReviewed())
+			.findFirst()
+			.orElseThrow(() -> new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태이면서 아직 리뷰를 작성하지 않은 예약이 필요합니다.)"));
 
 		Review review = new Review();
 		review.setUserId(userId);
@@ -99,9 +98,12 @@ public class ReviewService {
 		review.setRating(requestDto.getRating());
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
-
+		
 		reviewRepository.save(review);
 		updateStoreAverageRating(requestDto.getStoreId());
+		
+		// 예약의 리뷰 작성 상태 업데이트
+		reservationService.updateReviewStatus(confirmedReservation.getId(), true);
 	}
 
 	@Transactional

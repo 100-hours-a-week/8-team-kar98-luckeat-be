@@ -61,6 +61,9 @@ public class Reservation extends BaseEntity {
     @Column(name = "is_zerowaste", nullable = false, columnDefinition = "BOOLEAN COMMENT '제로웨이스트 여부'")
     private Boolean isZerowaste;
 
+    @Column(name = "is_reviewed", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE COMMENT '리뷰 작성 여부'")
+    private Boolean isReviewed;
+
     public enum ReservationStatus {
         PENDING, CONFIRMED, CANCELED //COMPLETED
     }
