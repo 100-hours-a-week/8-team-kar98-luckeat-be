@@ -22,6 +22,18 @@ public class ReviewResponseDto {
 	@Schema(description = "사용자 ID", example = "42")
 	private Long userId;
 
+	@Schema(description = "가게명", example = "맛있는 식당")
+	private String storeName;
+
+	@Schema(description = "상품명", example = "특제 비빔밥")
+	private String productName;
+
+	@Schema(description = "총 가격", example = "15000")
+	private Long totalPrice;
+
+	@Schema(description = "상품 주문 개수", example = "2")
+	private Long quantity;
+
 	@Schema(description = "평점", example = "4")
 	private Integer rating;
 
@@ -35,8 +47,17 @@ public class ReviewResponseDto {
 	private LocalDateTime createdAt;
 
 	public static ReviewResponseDto fromEntity(Review review) {
-		return ReviewResponseDto.builder().reviewId(review.getId()).userId(review.getUserId())
-				.rating(review.getRating()).reviewContent(review.getReviewContent())	
-				.reviewImage(review.getReviewImage()).createdAt(review.getCreatedAt()).build();
+		return ReviewResponseDto.builder()
+				.reviewId(review.getId())
+				.userId(review.getUserId())
+				.storeName(review.getStore().getStoreName())
+				.productName(review.getReservation().getProduct().getProductName())
+				.totalPrice(review.getReservation().getTotalPrice())
+				.quantity(review.getReservation().getQuantity())
+				.rating(review.getRating())
+				.reviewContent(review.getReviewContent())
+				.reviewImage(review.getReviewImage())
+				.createdAt(review.getCreatedAt())
+				.build();
 	}
 }
