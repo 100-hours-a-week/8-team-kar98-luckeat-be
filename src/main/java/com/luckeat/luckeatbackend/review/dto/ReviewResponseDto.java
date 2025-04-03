@@ -22,6 +22,9 @@ public class ReviewResponseDto {
 	@Schema(description = "사용자 ID", example = "42")
 	private Long userId;
 
+	@Schema(description = "사용자 닉네임", example = "행복한식객")
+	private String userNickname;
+
 	@Schema(description = "가게명", example = "맛있는 식당")
 	private String storeName;
 
@@ -50,6 +53,7 @@ public class ReviewResponseDto {
 		return ReviewResponseDto.builder()
 				.reviewId(review.getId())
 				.userId(review.getUserId())
+				.userNickname(review.getReservation().getUser().getNickname())
 				.storeName(review.getStore().getStoreName())
 				.productName(review.getReservation().getProduct().getProductName())
 				.totalPrice(review.getReservation().getTotalPrice())
