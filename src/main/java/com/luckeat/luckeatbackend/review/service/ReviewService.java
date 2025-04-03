@@ -111,6 +111,10 @@ public class ReviewService {
 		
 		reviewRepository.save(review);
 		updateStoreAverageRating(requestDto.getStoreId());
+		
+		// 예약의 isReviewed 필드를 true로 업데이트
+		reservation.setIsReviewed(true);
+		reservationService.updateReservation(reservation);
 	}
 
 	@Transactional

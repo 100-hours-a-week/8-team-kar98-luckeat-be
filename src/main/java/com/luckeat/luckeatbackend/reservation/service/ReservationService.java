@@ -256,4 +256,9 @@ public class ReservationService {
         return reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ReservationNotFoundException("예약을 찾을 수 없습니다."));
     }
+    
+    @Transactional
+    public Reservation updateReservation(Reservation reservation) {
+        return reservationRepository.save(reservation);
+    }
 } 

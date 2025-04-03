@@ -53,6 +53,9 @@ public class ReservationResponseDto {
     @Schema(description = "제로웨이스트 여부")
     private Boolean isZerowaste;
     
+    @Schema(description = "리뷰 작성 여부")
+    private Boolean isReviewed;
+    
     @Schema(description = "생성 시간")
     private LocalDateTime createdAt;
     
@@ -69,6 +72,7 @@ public class ReservationResponseDto {
                 .totalPrice(reservation.getTotalPrice())
                 .status(reservation.getStatus())
                 .isZerowaste(reservation.getIsZerowaste())
+                .isReviewed(reservation.getIsReviewed())
                 .createdAt(reservation.getCreatedAt())
                 .build();
     }
