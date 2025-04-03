@@ -88,9 +88,8 @@ public class ReviewService {
 		ReservationResponseDto confirmedReservation = userReservations.stream()
 			.filter(reservation -> reservation.getStoreId().equals(requestDto.getStoreId()))
 			.filter(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED)
-			.filter(reservation -> !reservation.getIsReviewed())
 			.findFirst()
-			.orElseThrow(() -> new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태이면서 아직 리뷰를 작성하지 않은 예약이 필요합니다.)"));
+			.orElseThrow(() -> new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태의 예약이 필요합니다.)"));
 
 		Review review = new Review();
 		review.setUserId(userId);
@@ -101,9 +100,6 @@ public class ReviewService {
 		
 		reviewRepository.save(review);
 		updateStoreAverageRating(requestDto.getStoreId());
-		
-		// 예약의 리뷰 작성 상태 업데이트
-		reservationService.updateReviewStatus(confirmedReservation.getId(), true);
 	}
 
 	@Transactional
