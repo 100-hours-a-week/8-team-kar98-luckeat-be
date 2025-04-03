@@ -234,13 +234,4 @@ public class ReservationService {
         reservation.setDeletedAt(LocalDateTime.now());
         reservationRepository.save(reservation);
     }
-
-    @Transactional
-    public void updateReviewStatus(Long reservationId, boolean isReviewed) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ReservationNotFoundException("예약을 찾을 수 없습니다."));
-        
-        reservation.setIsReviewed(isReviewed);
-        reservationRepository.save(reservation);
-    }
 } 
