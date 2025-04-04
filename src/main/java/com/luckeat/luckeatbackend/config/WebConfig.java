@@ -65,7 +65,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 실제 프로덕션 환경에서는 구체적인 도메인 목록 설정
         return Arrays.asList(
             "https://dxa66rf338pjr.cloudfront.net",
-            "https://luckeat.com",
+            "https://luckeat.net",
             "http://localhost:3000"
         );
     }
