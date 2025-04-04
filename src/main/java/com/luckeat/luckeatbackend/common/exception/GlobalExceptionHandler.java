@@ -4,6 +4,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -28,10 +30,13 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final Logger apiLogger = LoggerFactory.getLogger("API_LOGGER");
+
 	// 사용자 정의 예외 처리
 	@ExceptionHandler(CustomException.class)
 	public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
 		log.error("CustomException: {}", e.getMessage());
+		apiLogger.error("CustomException: {}", e.getMessage());
 		return ResponseEntity.status(e.getErrorCode().getStatus()).body(new ErrorResponse(e.getErrorCode()));
 	}
 
@@ -39,6 +44,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AuthenticationException.class)
 	public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
 		log.error("AuthenticationException: {}", e.getMessage());
+		apiLogger.error("AuthenticationException: {}", e.getMessage());
 		return ResponseEntity.status(401).body(new ErrorResponse(ErrorCode.UNAUTHORIZED));
 	}
 
@@ -46,6 +52,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
 		log.error("AccessDeniedException: {}", e.getMessage());
+		apiLogger.error("AccessDeniedException: {}", e.getMessage());
 		return ResponseEntity.status(403).body(new ErrorResponse(ErrorCode.FORBIDDEN));
 	}
 
@@ -53,12 +60,14 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BadCredentialsException.class)
 	public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException e) {
 		log.error("BadCredentialsException: {}", e.getMessage());
+		apiLogger.error("BadCredentialsException: {}", e.getMessage());
 		return ResponseEntity.status(401).body(new ErrorResponse(ErrorCode.UNAUTHORIZED));
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
        log.error("MethodNotAllowedException: {}", ex.getMessage());
+       apiLogger.error("MethodNotAllowedException: {}", ex.getMessage());
        return ResponseEntity
                .status(405)
                .body(new ErrorResponse(ErrorCode.METHOD_NOT_ALLOWED));
@@ -68,6 +77,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("ValidationException: {}", e.getMessage());
+        apiLogger.error("ValidationException: {}", e.getMessage());
         Map<String, String> errors = new HashMap<>();
 
         e.getBindingResult().getAllErrors().forEach(error -> {
@@ -83,6 +93,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ValidationErrorResponse> handleBindException(BindException e) {
         log.error("BindException: {}", e.getMessage());
+        apiLogger.error("BindException: {}", e.getMessage());
         Map<String, String> errors = new HashMap<>();
 
         e.getBindingResult().getAllErrors().forEach(error -> {
@@ -99,6 +110,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
 			MethodArgumentTypeMismatchException e) {
 		log.error("MethodArgumentTypeMismatchException: {}", e.getMessage());
+		apiLogger.error("MethodArgumentTypeMismatchException: {}", e.getMessage());
 		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST));
 	}
 
@@ -106,6 +118,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler({SQLException.class, DataAccessException.class})
 	public ResponseEntity<ErrorResponse> handleDatabaseException(Exception e) {
 		log.error("DatabaseException: {}", e.getMessage());
+		apiLogger.error("DatabaseException: {}", e.getMessage());
 		return ResponseEntity.status(500).body(new ErrorResponse(ErrorCode.DATABASE_ERROR));
 	}
 
@@ -113,6 +126,7 @@ public class GlobalExceptionHandler {
 @ExceptionHandler(DataIntegrityViolationException.class)
 public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
     log.error("DataIntegrityViolationException: {}", e.getMessage());
+    apiLogger.error("DataIntegrityViolationException: {}", e.getMessage());
     
     String errorMessage = e.getMessage();
     
@@ -134,24 +148,28 @@ public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataI
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(Exception e) {
 		log.error("Exception: {}", e.getMessage(), e);
+		apiLogger.error("Exception: {}", e.getMessage(), e);
 		return ResponseEntity.status(500).body(new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR));
 	}
 
 	@ExceptionHandler(FileUploadException.class)
 	public ResponseEntity<ErrorResponse> handleFileUploadException(FileUploadException e) {
 		log.error("FileUploadException: {}", e.getMessage());
+		apiLogger.error("FileUploadException: {}", e.getMessage());
 		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.FILE_UPLOAD_ERROR, e.getMessage()));
 	}
 
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
 		log.error("MaxUploadSizeExceededException: {}", e.getMessage());
+		apiLogger.error("MaxUploadSizeExceededException: {}", e.getMessage());
 		return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.FILE_UPLOAD_ERROR, "파일 크기가 너무 큽니다"));
 	}
 
 	@ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException e) {
         log.error("IllegalStateException: {}", e.getMessage());
+        apiLogger.error("IllegalStateException: {}", e.getMessage());
         return ResponseEntity.status(400).body(new ErrorResponse(ErrorCode.BAD_REQUEST, e.getMessage()));
     }
 }
