@@ -46,12 +46,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdWithPessimisticLock(@Param("id") Long id);
 
 	@Modifying
-	@Query("UPDATE Product p SET " +
-		"p.productCount = CASE WHEN p.productCount >= :quantity THEN p.productCount - :quantity ELSE p.productCount END, " +
-		"p.isOpen = CASE WHEN p.productCount >= :quantity AND (p.productCount - :quantity) = 0 THEN false ELSE p.isOpen END " +
-		"WHERE p.id = :productId AND p.productCount >= :quantity")
+	@Query(value = "UPDATE product SET " +
+		"product_count = product_count - :quantity, " +
+		"is_open = CASE WHEN product_count <= :quantity THEN 0 ELSE is_open END " +
+		"WHERE id = :productId AND product_count >= :quantity", 
+		nativeQuery = true)
 	int decreaseProductStock(@Param("productId") Long productId, @Param("quantity") int quantity);
-	
+
 	@Modifying
 	@Query("UPDATE Product p SET p.productCount = p.productCount + :quantity, " +
 		"p.isOpen = CASE WHEN p.productCount + :quantity > 0 THEN true ELSE p.isOpen END " +
