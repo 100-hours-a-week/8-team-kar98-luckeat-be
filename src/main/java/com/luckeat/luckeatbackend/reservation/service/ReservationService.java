@@ -25,6 +25,7 @@ import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -35,6 +36,7 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final ProductRepository productRepository;
+    private final EntityManager entityManager;
     
     /**
      * 새로운 예약 생성
@@ -59,22 +61,27 @@ public class ReservationService {
             throw new ProductNotFoundException("해당 가게의 상품이 아닙니다.");
         }
         
+        
         if (product.getProductCount() < requestDto.getQuantity()) {
             throw new IllegalStateException("재고가 부족합니다.");
         }
 
-         int updatedRows = productRepository.decreaseProductStock(
+        int updatedRows = productRepository.decreaseProductStock(
                 requestDto.getProductId(), 
                 requestDto.getQuantity().intValue()
-         );
+        );
     
         if (updatedRows == 0) {
-                throw new IllegalStateException("재고가 부족합니다.");
+            throw new IllegalStateException("재고가 부족합니다.");
         }
+        
+        // 영속성 컨텍스트를 완전히 초기화
+        entityManager.flush();
+        entityManager.clear();
             
-        product = productRepository.findByIdAndDeletedAtIsNull(requestDto.getProductId())
+        // 영속성 컨텍스트를 무시하고 DB에서 직접 조회
+        product = productRepository.findById(requestDto.getProductId())
             .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다."));
-    
         
         Reservation reservation = requestDto.toEntity(user, store, product);
         Reservation savedReservation = reservationRepository.save(reservation);
