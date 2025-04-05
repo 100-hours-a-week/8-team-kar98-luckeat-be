@@ -60,20 +60,24 @@ public class UserService {
 		return userRepository.findByNicknameAndDeletedAtIsNull(nickname);
 	}
 
-	// DTO를 받아서 User를 생성하는 메소드
+
+	// 기존 메소드도 유지 (하위 호환성을 위해)
 	@Transactional
 	public User createUser(RegisterRequestDto registerDto) {
-		// 이메일 중복 검사
-		if (userRepository.existsByEmailAndDeletedAtIsNull(registerDto.getEmail())) {
+
+		// 이메일 중복 검사 - 소프트 삭제된 사용자의 이메일도 중복 체크에 포함
+		if (userRepository.existsByEmail(registerDto.getEmail())) {
 			throw new EmailDuplicateException();
 		}
-		
-		// 닉네임 중복 검사
-		if (userRepository.existsByNicknameAndDeletedAtIsNull(registerDto.getNickname())) {
+
+
+		// 닉네임 중복 검사 - 소프트 삭제된 사용자의 닉네임도 중복 체크에 포함
+		if (userRepository.existsByNickname(registerDto.getNickname())) {
 			throw new NicknameDuplicateException();
 		}
 		
-		// User 객체 생성
+		
+		// 비밀번호 암호화
 		User user = User.builder()
 				.email(registerDto.getEmail())
 				.nickname(registerDto.getNickname())
@@ -81,26 +85,6 @@ public class UserService {
 				.role(User.Role.valueOf(registerDto.getRole().name()))
 				.build();
 		
-		return userRepository.save(user);
-	}
-
-	// 기존 메소드도 유지 (하위 호환성을 위해)
-	@Transactional
-	public User createUser(User user) {
-
-		// 이메일 중복 검사 - 소프트 삭제된 사용자의 이메일도 중복 체크에 포함
-		if (userRepository.existsByEmail(user.getEmail())) {
-			throw new EmailDuplicateException();
-		}
-
-		// 닉네임 중복 검사 - 소프트 삭제된 사용자의 닉네임도 중복 체크에 포함
-		if (userRepository.existsByNickname(user.getNickname())) {
-			throw new NicknameDuplicateException();
-		}
-		
-		
-		// 비밀번호 암호화
-		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		return userRepository.save(user);
 	}
 

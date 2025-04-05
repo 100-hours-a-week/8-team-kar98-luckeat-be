@@ -34,6 +34,12 @@ public class UserInfoResponseDto {
 	
 	@Schema(description = "수정 일시", example = "2025-03-20T10:15:30")
 	private LocalDateTime updatedAt;
+	
+	@Schema(description = "총 아낀 금액", example = "15000")
+	private Integer totalSavedMoney;
+	
+	@Schema(description = "총 상품 갯수", example = "5")
+	private Integer totalProductCount;
 
 	public static UserInfoResponseDto fromEntity(User user) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss");
@@ -42,6 +48,9 @@ public class UserInfoResponseDto {
 				.nickname(user.getNickname())
 				.role(user.getRole())
 				.createdAt(user.getCreatedAt())
-				.updatedAt(user.getUpdatedAt()).build();
+				.updatedAt(user.getUpdatedAt())
+				.totalSavedMoney(user.getTotalSavedMoney())
+				.totalProductCount(user.getTotalProductCount())
+				.build();
 	}
 }

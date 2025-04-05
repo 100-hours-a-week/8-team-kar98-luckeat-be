@@ -1,16 +1,16 @@
-name: 🚀 자동 배포
+name: 🚀 deploy
 
 on:
   push:
     branches:
       - develop
       - main
-  workflow_dispatch:  # 수동 실행 가능
+  workflow_dispatch: # 수동 실행 가능
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       # 1️⃣ 환경 변수 설정
       - name: Set environment variables
@@ -19,23 +19,47 @@ jobs:
             echo "ENV_TYPE=prod" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+            echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
           else
             echo "ENV_TYPE=dev" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.DEV_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+            echo "SENTRY_ENVIRONMENT=development" >> $GITHUB_ENV
           fi
 
       # 2️⃣ GitHub에서 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Sentry release를 위해 전체 git history 필요
 
-      # 3️⃣ AWS EC2 서버에 SSH로 접속하여 자동 배포 스크립트 실행
+      # 3️⃣ JDK 21 설정
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 4️⃣ Sentry 릴리즈 생성
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ktb-sh
+          SENTRY_PROJECT: sentry-back
+        with:
+          environment: ${{ env.SENTRY_ENVIRONMENT }}
+          version: ${{ github.sha }}
+          ignore_missing: true  # 이전 릴리즈를 찾을 수 없을 때 에러 무시
+          ignore_empty: true  # 커밋이 없을 때 에러 무시
+
+      # 5️⃣ AWS EC2 서버에 SSH로 접속하여 자동 배포 스크립트 실행
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}  # 공통 사용자 이름 사용
-          key: ${{ secrets.EC2_SSH_KEY }}  # 공통 SSH 키 사용
+          username: ${{ secrets.EC2_USER }} # 공통 사용자 이름 사용
+          key: ${{ secrets.EC2_SSH_KEY }} # 공통 SSH 키 사용
           port: 22
           script_stop: true
           debug: true
@@ -45,5 +69,6 @@ jobs:
             mkdir -p config
             echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
             echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
+            export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             bash deploy.sh
-            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료" 
+            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료"

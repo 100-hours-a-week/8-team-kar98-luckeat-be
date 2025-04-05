@@ -21,10 +21,13 @@ import com.luckeat.luckeatbackend.review.dto.ReviewResponseDto;
 import com.luckeat.luckeatbackend.review.dto.ReviewUpdateDto;
 import com.luckeat.luckeatbackend.review.model.Review;
 import com.luckeat.luckeatbackend.review.repository.ReviewRepository;
-import com.luckeat.luckeatbackend.reviewpermission.service.ReviewPermissionService;
 import com.luckeat.luckeatbackend.users.model.User;
 import com.luckeat.luckeatbackend.users.service.UserService;
 import com.luckeat.luckeatbackend.store.service.StoreService;
+import com.luckeat.luckeatbackend.reservation.service.ReservationService;
+import com.luckeat.luckeatbackend.reservation.model.Reservation;
+import com.luckeat.luckeatbackend.reservation.model.Reservation.ReservationStatus;
+import com.luckeat.luckeatbackend.reservation.dto.ReservationResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,9 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
-	private final ReviewPermissionService permissionService;
 	private final UserService userService;
 	private final StoreService storeService;
+	private final ReservationService reservationService;
 
 	public List<ReviewResponseDto> getAllReviews() {
 		Long userId = getCurrentUserId();
@@ -78,22 +81,40 @@ public class ReviewService {
 	@Transactional
 	public void createReview(ReviewRequestDto requestDto) {
 		Long userId = getCurrentUserId();
-		// DTO에 Bean Validation이 적용되어 있으므로 별도 검증 로직 제거
 
-		if (!permissionService.hasPermission(userId, requestDto.getStoreId())) {
-			throw new ReviewForbiddenException();
+		// 예약 확인
+		Reservation reservation = reservationService.getReservationById(requestDto.getReservationId());
+		
+		// 예약이 현재 사용자의 것인지 확인
+		if (!reservation.getUser().getId().equals(userId)) {
+			throw new IllegalStateException("해당 예약에 대한 권한이 없습니다.");
+		}
+		
+		// 예약이 CONFIRMED 상태인지 확인
+		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+			throw new IllegalStateException("리뷰를 작성할 수 있는 예약이 없습니다. (CONFIRMED 상태의 예약이 필요합니다.)");
+		}
+
+		// 해당 예약에 대한 리뷰가 이미 존재하는지 확인
+		Optional<Review> existingReview = reviewRepository.findByReservationId(requestDto.getReservationId());
+		if (existingReview.isPresent()) {
+			throw new IllegalStateException("이미 해당 예약에 대한 리뷰를 작성했습니다.");
 		}
 
 		Review review = new Review();
 		review.setUserId(userId);
 		review.setStoreId(requestDto.getStoreId());
+		review.setReservationId(requestDto.getReservationId());
 		review.setRating(requestDto.getRating());
 		review.setReviewContent(requestDto.getReviewContent());
 		review.setReviewImage(requestDto.getReviewImage());
-
+		
 		reviewRepository.save(review);
 		updateStoreAverageRating(requestDto.getStoreId());
 		
+		// 예약의 isReviewed 필드를 true로 업데이트
+		reservation.setIsReviewed(true);
+		reservationService.updateReservation(reservation);
 	}
 
 	@Transactional

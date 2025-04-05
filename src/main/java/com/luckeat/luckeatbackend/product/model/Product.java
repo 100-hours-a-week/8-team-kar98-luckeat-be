@@ -50,5 +50,5 @@ public class Product extends BaseEntity {
 
     @Column(name = "is_open", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE COMMENT '상품 판매 여부'")
     private Boolean isOpen = true;
-
+	
 }

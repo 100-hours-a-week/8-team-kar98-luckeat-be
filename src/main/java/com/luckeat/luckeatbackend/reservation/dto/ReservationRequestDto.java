@@ -36,6 +36,9 @@ public class ReservationRequestDto {
     @NotNull(message = "제로웨이스트 여부는 필수입니다.")
     private Boolean isZerowaste;
     
+    @Schema(description = "리뷰 작성 여부", example = "false")
+    private Boolean isReviewed;
+    
     public Reservation toEntity(User user, Store store, Product product) {
         Long totalPrice = calculateTotalPrice(product, quantity);
         
@@ -47,6 +50,7 @@ public class ReservationRequestDto {
                 .totalPrice(totalPrice)
                 .status(ReservationStatus.PENDING)
                 .isZerowaste(isZerowaste)
+                .isReviewed(isReviewed != null ? isReviewed : false)
                 .build();
     }
     
