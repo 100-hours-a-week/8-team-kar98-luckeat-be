@@ -26,7 +26,7 @@ public class RegisterRequestDto {
     
     @Size(min = 8, max = 20, message = "비밀번호는 8~20자 이내여야 합니다.")
     @NotBlank(message = "비밀번호는 필수 입력 항목입니다.")
-    @Schema(description = "비밀번호 (8~20자, 문자와 숫자 포함)", example = "password123", required = true)
+    @Schema(description = "Base64로 인코딩된 비밀번호 (8~20자, 문자와 숫자 포함)", example = "cGFzc3dvcmQxMjM=", required = true)
     private String password;
     
     @Size(min = 2, max = 10, message = "닉네임은 2~10자 이내여야 합니다.")

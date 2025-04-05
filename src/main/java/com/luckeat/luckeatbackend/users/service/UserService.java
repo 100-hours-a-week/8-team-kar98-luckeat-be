@@ -64,24 +64,27 @@ public class UserService {
 	// 기존 메소드도 유지 (하위 호환성을 위해)
 	@Transactional
 	public User createUser(RegisterRequestDto registerDto) {
-
 		// 이메일 중복 검사 - 소프트 삭제된 사용자의 이메일도 중복 체크에 포함
 		if (userRepository.existsByEmail(registerDto.getEmail())) {
 			throw new EmailDuplicateException();
 		}
-
 
 		// 닉네임 중복 검사 - 소프트 삭제된 사용자의 닉네임도 중복 체크에 포함
 		if (userRepository.existsByNickname(registerDto.getNickname())) {
 			throw new NicknameDuplicateException();
 		}
 		
+		// Base64로 인코딩된 비밀번호 디코딩
+		String decodedPassword = new String(java.util.Base64.getDecoder().decode(registerDto.getPassword()));
+		
+		// 비밀번호를 소문자로 변환
+		String normalizedPassword = decodedPassword.toLowerCase();
 		
 		// 비밀번호 암호화
 		User user = User.builder()
 				.email(registerDto.getEmail())
 				.nickname(registerDto.getNickname())
-				.password(passwordEncoder.encode(registerDto.getPassword()))
+				.password(passwordEncoder.encode(normalizedPassword))
 				.role(User.Role.valueOf(registerDto.getRole().name()))
 				.build();
 		
@@ -166,8 +169,14 @@ public class UserService {
 		User user = userRepository.findByEmailAndDeletedAtIsNull(loginRequestDto.getEmail())
             .orElseThrow(() -> new UserNotFoundException());
     
+		// Base64로 인코딩된 비밀번호 디코딩
+		String decodedPassword = new String(java.util.Base64.getDecoder().decode(loginRequestDto.getPassword()));
+		
+		// 비밀번호를 소문자로 변환
+		String normalizedPassword = decodedPassword.toLowerCase();
+		
 		// 비밀번호 검증
-		if (!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+		if (!passwordEncoder.matches(normalizedPassword, user.getPassword())) {
 			throw new PasswordMismatchException();
 		}
 
