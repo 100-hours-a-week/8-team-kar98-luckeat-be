@@ -7,6 +7,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,6 +39,7 @@ import com.luckeat.luckeatbackend.users.repository.UserRepository;
 import com.luckeat.luckeatbackend.category.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageImpl;
 
 @Slf4j
 @Service
@@ -53,8 +58,10 @@ public class StoreService {
 				.map(StoreResponseDto::fromEntity).toList();
 	}
 
-	public List<StoreResponseDto> getAllStores() {
-		return storeRepository.findAllByDeletedAtIsNull().stream().map(StoreResponseDto::fromEntity).toList();
+	public Page<StoreResponseDto> getAllStores(int page, int size) {
+		Pageable pageable = PageRequest.of(page, size);
+		Page<Store> storePage = storeRepository.findAllByDeletedAtIsNull(pageable);
+		return storePage.map(StoreResponseDto::fromEntity);
 	}
 
 	public List<StoreResponseDto> getStoresByName(String storeName) {
@@ -200,46 +207,74 @@ public class StoreService {
 	 * @param isDiscountOpen 마감 할인 중인 가게만 필터링 (선택적)
 	 * @return 필터링 및 정렬된 가게 목록 DTO
 	 */
-	public List<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
-											String storeName, Boolean isDiscountOpen) {
-		// 1. 기본적으로 삭제되지 않은 모든 가게 조회 (deletedAt이 null인 가게들)
-		List<Store> stores = storeRepository.findAllByDeletedAtIsNull();
+	public Page<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
+											String storeName, Boolean isDiscountOpen, int page, int size) {
+		// 정렬 기준 설정
+		Sort sortCriteria = Sort.unsorted();
+		if (sort != null) {
+			switch (sort) {
+				case "distance":
+					if (lat != null && lng != null) {
+						// 거리순 정렬은 메모리에서 처리
+						sortCriteria = Sort.unsorted();
+					}
+					break;
+				case "share":
+					sortCriteria = Sort.by(Sort.Direction.DESC, "shareCount");
+					break;
+				case "rating":
+					sortCriteria = Sort.by(Sort.Direction.DESC, "avgRating");
+					break;
+			}
+		}
 
-		// 2. 가게명 검색 필터링 (storeName 파라미터가 존재하고 비어있지 않은 경우)
-		// - 대소문자 구분 없이 가게 이름에 검색어가 포함된 가게들만 필터링
+		// 1. 먼저 모든 데이터를 가져와서 필터링
+		List<Store> allStores = storeRepository.findAllByDeletedAtIsNull();
+
+		// 2. 필터링 적용
 		if (storeName != null && !storeName.trim().isEmpty()) {
 			String searchTerm = storeName.trim().toLowerCase();
-			stores = stores.stream().filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
-					.collect(Collectors.toList());
+			allStores = allStores.stream()
+				.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
+				.collect(Collectors.toList());
 		}
 
-		// 3. 위치 기반 필터링 (위도, 경도, 반경이 모두 제공된 경우)
-		// - 사용자 위치로부터 지정된 반경 내에 있는 가게들만 필터링
-		// - Haversine 공식을 사용하여 두 지점 간의 거리 계산
 		if (lat != null && lng != null && radius != null) {
-			stores = filterByDistance(stores, lat, lng, radius);
+			allStores = allStores.stream()
+				.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
+				.collect(Collectors.toList());
 		}
 
-		// 4. 마감할인 필터링
-		// - isDiscountOpen=true인 경우: 마감할인 중인 가게만 표시
-		// - isDiscountOpen=false인 경우: 마감할인 중이 아닌 가게만 표시
 		if (isDiscountOpen != null) {
-			stores = stores.stream().filter(store -> {
-				// 가게의 상품들 중 is_open이 true이고 삭제되지 않은 상품이 있는지 확인
-				boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
-				// isDiscountOpen이 true면 마감할인 중인 가게만, false면 마감할인 중이 아닌 가게만 반환
-				return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
-			}).collect(Collectors.toList());
+			allStores = allStores.stream()
+				.filter(store -> {
+					boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
+					return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
+				})
+				.collect(Collectors.toList());
 		}
 
-		// 5. 정렬 로직 적용 (sort 파라미터가 제공된 경우)
-		// - distance: 사용자 위치로부터 거리순 정렬
-		// - share: 공유 횟수 내림차순 정렬
-		if (sort != null) {
-			sortStores(stores, sort, lat, lng);
+		// 3. 정렬 적용
+		if (sort != null && sort.equals("distance") && lat != null && lng != null) {
+			allStores.sort(Comparator.comparingDouble(store -> 
+				calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
 		}
 
-		return stores.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList());
+		// 4. 전체 데이터 수 계산
+		int totalElements = allStores.size();
+
+		// 5. 페이지네이션 적용
+		int start = page * size;
+		int end = Math.min(start + size, totalElements);
+		List<Store> pageContent = allStores.subList(start, end);
+
+		// 6. Page 객체 생성
+		Pageable pageable = PageRequest.of(page, size, sortCriteria);
+		return new PageImpl<>(
+			pageContent.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList()),
+			pageable,
+			totalElements
+		);
 	}
 
 	// 거리 계산 및 필터링 메소드
