@@ -1,7 +1,5 @@
 package com.luckeat.luckeatbackend.store.controller;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,9 +68,10 @@ public class StoreController {
 			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
 			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen,
 			@Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") int page,
-			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
+			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
+			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
-		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size));
+		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId));
 	}
 
 	/**
