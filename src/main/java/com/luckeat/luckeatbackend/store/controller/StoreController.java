@@ -2,6 +2,7 @@ package com.luckeat.luckeatbackend.store.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -52,6 +53,8 @@ public class StoreController {
 	 * @param sort 정렬 기준 (distance, rating, discount)
 	 * @param storeName 가게 이름 검색어
 	 * @param isDiscountOpen 할인 중인 가게만 조회 여부
+	 * @param page 페이지 번호 (0부터 시작)
+	 * @param size 페이지 크기
 	 * @return 가게 목록 정보
 	 */
 	@Operation(summary = "가게 목록 조회", description = "다양한 조건으로 가게 목록을 조회합니다")
@@ -59,15 +62,17 @@ public class StoreController {
 		@ApiResponse(responseCode = "200", description = "가게 목록 조회 성공")
 	})
 	@GetMapping
-	public ResponseEntity<List<StoreResponseDto>> getAllStores(
+	public ResponseEntity<Page<StoreResponseDto>> getAllStores(
 			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
 			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
 			@Parameter(description = "정렬 기준 (distance, rating, share)") @RequestParam(required = false) String sort,
 			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
-			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen) {
+			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen,
+			@Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") int page,
+			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
 
-		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen));
+		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size));
 	}
 
 	/**
