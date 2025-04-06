@@ -17,11 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luckeat.luckeatbackend.category.repository.CategoryRepository;
 import com.luckeat.luckeatbackend.common.exception.store.StoreForbiddenException;
-import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidAddressException;
-import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidBusinessHoursException;
-import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidDescriptionException;
-import com.luckeat.luckeatbackend.common.exception.store.StoreInvalidPhoneNumberException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreUnauthenticatedException;
 import com.luckeat.luckeatbackend.common.exception.user.UserNotFoundException;
@@ -36,10 +33,9 @@ import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
-import com.luckeat.luckeatbackend.category.repository.CategoryRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageImpl;
 
 @Slf4j
 @Service
@@ -208,73 +204,97 @@ public class StoreService {
 	 * @return 필터링 및 정렬된 가게 목록 DTO
 	 */
 	public Page<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
-											String storeName, Boolean isDiscountOpen, int page, int size) {
+											String storeName, Boolean isDiscountOpen, int page, int size, int categoryId) {
 		// 정렬 기준 설정
 		Sort sortCriteria = Sort.unsorted();
 		if (sort != null) {
 			switch (sort) {
 				case "distance":
-					if (lat != null && lng != null) {
-						// 거리순 정렬은 메모리에서 처리
-						sortCriteria = Sort.unsorted();
-					}
+					// 거리순 정렬은 repository에서 처리
 					break;
 				case "share":
-					sortCriteria = Sort.by(Sort.Direction.DESC, "shareCount");
+					// repository에서 처리되므로 여기서는 설정만
 					break;
 				case "rating":
-					sortCriteria = Sort.by(Sort.Direction.DESC, "avgRating");
+					// repository에서 처리되므로 여기서는 설정만
+					break;
+				default:
+					sort = null; // 알 수 없는 정렬 기준의 경우 null로 설정
 					break;
 			}
 		}
 
-		// 1. 먼저 모든 데이터를 가져와서 필터링
-		List<Store> allStores = storeRepository.findAllByDeletedAtIsNull();
-
-		// 2. 필터링 적용
-		if (storeName != null && !storeName.trim().isEmpty()) {
-			String searchTerm = storeName.trim().toLowerCase();
-			allStores = allStores.stream()
-				.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
-				.collect(Collectors.toList());
+		Page<Store> storesPage;
+    	Pageable pageable = PageRequest.of(page, size, sortCriteria);
+    
+		// 위치 기반 검색이 필요한 경우
+		if (lat != null && lng != null) {
+			storesPage = storeRepository.findStoresWithLocation(
+					categoryId, storeName, isDiscountOpen, lat, lng, radius, sort, pageable);
+		} 
+		// 위치 기반 검색이 필요 없는 경우
+		else {
+			storesPage = storeRepository.findStoresWithoutLocation(
+					categoryId, storeName, isDiscountOpen, sort, pageable);
 		}
+		
+		return storesPage.map(StoreResponseDto::fromEntity);
 
-		if (lat != null && lng != null && radius != null) {
-			allStores = allStores.stream()
-				.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
-				.collect(Collectors.toList());
-		}
+		// // 1. 먼저 모든 데이터를 가져와서 필터링
+		// List<Store> allStores = storeRepository.findAllByDeletedAtIsNull();
 
-		if (isDiscountOpen != null) {
-			allStores = allStores.stream()
-				.filter(store -> {
-					boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
-					return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
-				})
-				.collect(Collectors.toList());
-		}
+		// // 2. 필터링 적용
 
-		// 3. 정렬 적용
-		if (sort != null && sort.equals("distance") && lat != null && lng != null) {
-			allStores.sort(Comparator.comparingDouble(store -> 
-				calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
-		}
+		// if (category != 0) {
+		// 	// 카테고리 ID로 필터링
+		// 	allStores = allStores.stream()
+		// 		.filter(store -> store.getCategoryId() == category)
+		// 		.collect(Collectors.toList());
+		// }
 
-		// 4. 전체 데이터 수 계산
-		int totalElements = allStores.size();
+		// if (storeName != null && !storeName.trim().isEmpty()) {
+		// 	String searchTerm = storeName.trim().toLowerCase();
+		// 	allStores = allStores.stream()
+		// 		.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
+		// 		.collect(Collectors.toList());
+		// }
 
-		// 5. 페이지네이션 적용
-		int start = page * size;
-		int end = Math.min(start + size, totalElements);
-		List<Store> pageContent = allStores.subList(start, end);
+		// if (lat != null && lng != null && radius != null) {
+		// 	allStores = allStores.stream()
+		// 		.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
+		// 		.collect(Collectors.toList());
+		// }
 
-		// 6. Page 객체 생성
-		Pageable pageable = PageRequest.of(page, size, sortCriteria);
-		return new PageImpl<>(
-			pageContent.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList()),
-			pageable,
-			totalElements
-		);
+		// if (isDiscountOpen != null) {
+		// 	allStores = allStores.stream()
+		// 		.filter(store -> {
+		// 			boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
+		// 			return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
+		// 		})
+		// 		.collect(Collectors.toList());
+		// }
+
+		// // 3. 정렬 적용
+		// if (sort != null && sort.equals("distance") && lat != null && lng != null) {
+		// 	allStores.sort(Comparator.comparingDouble(store -> 
+		// 		calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
+		// }
+
+		// // 4. 전체 데이터 수 계산
+		// int totalElements = allStores.size();
+
+		// // 5. 페이지네이션 적용
+		// int start = page * size;
+		// int end = Math.min(start + size, totalElements);
+		// List<Store> pageContent = allStores.subList(start, end);
+
+		// // 6. Page 객체 생성
+		// Pageable pageable = PageRequest.of(page, size, sortCriteria);
+		// return new PageImpl<>(
+		// 	pageContent.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList()),
+		// 	pageable,
+		// 	totalElements
+		// );
 	}
 
 	// 거리 계산 및 필터링 메소드
