@@ -85,7 +85,7 @@ public class UserService {
 				.email(registerDto.getEmail())
 				.nickname(registerDto.getNickname())
 				.password(passwordEncoder.encode(normalizedPassword))
-				.role(User.Role.valueOf(registerDto.getRole().name()))
+				.role(User.Role.valueOf(registerDto.getRole()))
 				.build();
 		
 		return userRepository.save(user);
