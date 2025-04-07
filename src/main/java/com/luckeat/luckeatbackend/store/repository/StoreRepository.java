@@ -32,7 +32,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 	List<Store> findAllByCategoryId(Long categoryId);
 
 	// 위치 기반 필터링 및 정렬을 위한 네이티브 쿼리
-    @Query(value = "SELECT * FROM store s WHERE s.deleted_at IS NULL " +
+       @Query(value = "SELECT * FROM store s WHERE s.deleted_at IS NULL " +
            "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
            "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
            "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
@@ -42,7 +42,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
            "ORDER BY " +
            "CASE WHEN :sort = 'distance' THEN (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) END ASC, " +
            "CASE WHEN :sort = 'share' THEN s.share_count END DESC, " +
-           "CASE WHEN :sort = 'rating' THEN s.avg_rating_google END DESC",
+           "CASE WHEN :sort = 'rating' THEN s.avg_rating_google END DESC, " +
+           "s.id ASC",
            countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
            "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
            "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
@@ -69,17 +70,19 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
               "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
               "ORDER BY " +
               "CASE WHEN :sort = 'rating' THEN s.avg_rating_google ELSE NULL END DESC, " +
-              "CASE WHEN :sort = 'share' THEN s.share_count ELSE NULL END DESC",
+              "CASE WHEN :sort = 'share' THEN s.share_count ELSE NULL END DESC, " +
+              "CASE WHEN :sort = 'review' THEN (SELECT COUNT(*) FROM review r WHERE r.store_id = s.id AND r.deleted_at IS NULL) ELSE NULL END DESC, " +
+              "s.id ASC",
               countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
               "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
               "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
               "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
               "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL))",
               nativeQuery = true)
-    Page<Store> findStoresWithoutLocation(
-            @Param("categoryId") int categoryId,
-            @Param("storeName") String storeName,
-            @Param("isDiscountOpen") Boolean isDiscountOpen,
-            @Param("sort") String sort,
-            Pageable pageable);
+       Page<Store> findStoresWithoutLocation(
+              @Param("categoryId") int categoryId,
+              @Param("storeName") String storeName,
+              @Param("isDiscountOpen") Boolean isDiscountOpen,
+              @Param("sort") String sort,
+              Pageable pageable);
 }
