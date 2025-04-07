@@ -3,14 +3,12 @@ package com.luckeat.luckeatbackend.store.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -205,27 +203,9 @@ public class StoreService {
 	 */
 	public Page<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
 											String storeName, Boolean isDiscountOpen, int page, int size, int categoryId) {
-		// 정렬 기준 설정
-		Sort sortCriteria = Sort.unsorted();
-		if (sort != null) {
-			switch (sort) {
-				case "distance":
-					// 거리순 정렬은 repository에서 처리
-					break;
-				case "share":
-					// repository에서 처리되므로 여기서는 설정만
-					break;
-				case "rating":
-					// repository에서 처리되므로 여기서는 설정만
-					break;
-				default:
-					sort = null; // 알 수 없는 정렬 기준의 경우 null로 설정
-					break;
-			}
-		}
 
 		Page<Store> storesPage;
-    	Pageable pageable = PageRequest.of(page, size, sortCriteria);
+    	Pageable pageable = PageRequest.of(page, size);
     
 		// 위치 기반 검색이 필요한 경우
 		if (lat != null && lng != null) {
@@ -239,104 +219,7 @@ public class StoreService {
 		}
 		
 		return storesPage.map(StoreResponseDto::fromEntity);
-
-		// // 1. 먼저 모든 데이터를 가져와서 필터링
-		// List<Store> allStores = storeRepository.findAllByDeletedAtIsNull();
-
-		// // 2. 필터링 적용
-
-		// if (category != 0) {
-		// 	// 카테고리 ID로 필터링
-		// 	allStores = allStores.stream()
-		// 		.filter(store -> store.getCategoryId() == category)
-		// 		.collect(Collectors.toList());
-		// }
-
-		// if (storeName != null && !storeName.trim().isEmpty()) {
-		// 	String searchTerm = storeName.trim().toLowerCase();
-		// 	allStores = allStores.stream()
-		// 		.filter(store -> store.getStoreName().toLowerCase().contains(searchTerm))
-		// 		.collect(Collectors.toList());
-		// }
-
-		// if (lat != null && lng != null && radius != null) {
-		// 	allStores = allStores.stream()
-		// 		.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
-		// 		.collect(Collectors.toList());
-		// }
-
-		// if (isDiscountOpen != null) {
-		// 	allStores = allStores.stream()
-		// 		.filter(store -> {
-		// 			boolean hasOpenProduct = productRepository.existsByStoreIdAndIsOpenTrueAndDeletedAtIsNull(store.getId());
-		// 			return isDiscountOpen ? hasOpenProduct : !hasOpenProduct;
-		// 		})
-		// 		.collect(Collectors.toList());
-		// }
-
-		// // 3. 정렬 적용
-		// if (sort != null && sort.equals("distance") && lat != null && lng != null) {
-		// 	allStores.sort(Comparator.comparingDouble(store -> 
-		// 		calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
-		// }
-
-		// // 4. 전체 데이터 수 계산
-		// int totalElements = allStores.size();
-
-		// // 5. 페이지네이션 적용
-		// int start = page * size;
-		// int end = Math.min(start + size, totalElements);
-		// List<Store> pageContent = allStores.subList(start, end);
-
-		// // 6. Page 객체 생성
-		// Pageable pageable = PageRequest.of(page, size, sortCriteria);
-		// return new PageImpl<>(
-		// 	pageContent.stream().map(StoreResponseDto::fromEntity).collect(Collectors.toList()),
-		// 	pageable,
-		// 	totalElements
-		// );
-	}
-
-	// 거리 계산 및 필터링 메소드
-	private List<Store> filterByDistance(List<Store> stores, Double lat, Double lng, Double radius) {
-		return stores.stream()
-				.filter(store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude()) <= radius)
-				.collect(Collectors.toList());
-	}
-
-	// 거리 계산 메소드 (Haversine 공식)
-	private double calculateDistance(double lat1, double lng1, float lat2, float lng2) {
-		double earthRadius = 6371; // 지구 반경 (km)
-		double dLat = Math.toRadians(lat2 - lat1);
-		double dLng = Math.toRadians(lng2 - lng1);
-		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
-				* Math.cos(Math.toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-		double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-		return earthRadius * c;
-	}
-
-	// 정렬 메소드
-	private void sortStores(List<Store> stores, String sort, Double lat, Double lng) {
-		switch (sort) {
-			case "distance":
-				if (lat != null && lng != null) {
-					stores.sort(Comparator.comparingDouble(
-							store -> calculateDistance(lat, lng, store.getLatitude(), store.getLongitude())));
-				}
-				break;
-			case "share":
-				stores.sort(Comparator.comparing(Store::getShareCount).reversed());
-				break;
-			case "rating":
-				stores.sort(Comparator.comparing(Store::getAvgRating, Comparator.nullsLast(Float::compareTo)).reversed());
-				break;
-			default:
-				// 기본 정렬 또는 다른 정렬 옵션
-				break;
-		}
-	}
-
-	
+	}	
 	
 	/**
 	 * 현재 인증된 사용자의 ID를 가져오는 메소드
