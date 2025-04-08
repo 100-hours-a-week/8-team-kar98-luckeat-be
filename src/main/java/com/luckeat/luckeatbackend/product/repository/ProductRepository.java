@@ -47,8 +47,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	@Modifying
 	@Query(value = "UPDATE product SET " +
-		"product_count = product_count - :quantity, " +
-		"is_open = CASE WHEN product_count <= :quantity THEN 0 ELSE is_open END " +
+		"is_open = CASE WHEN product_count = :quantity THEN false ELSE is_open END, " +
+		"product_count = product_count - :quantity " +
 		"WHERE id = :productId AND product_count >= :quantity", 
 		nativeQuery = true)
 	int decreaseProductStock(@Param("productId") Long productId, @Param("quantity") int quantity);
