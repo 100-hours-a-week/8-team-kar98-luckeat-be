@@ -15,8 +15,6 @@ import lombok.NoArgsConstructor;
 public class PasswordUpdateDto {
 
 	@NotBlank(message = "현재 비밀번호는 필수 입력 항목입니다.")
-	@Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,20}$", 
-			message = "비밀번호는 영문자와 숫자를 모두 포함해야 합니다.")
 	@Schema(description = "현재 비밀번호", example = "currentPassword123", required = true)
 	private String currentPassword;
 	
