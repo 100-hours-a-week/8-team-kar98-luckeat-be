@@ -166,6 +166,8 @@ jobs:
             echo "==== [EC2] ECR 로그인 및 이미지 pull 시작 ===="
             # AWS 자격증명 파일 설정 (비대화형 환경)
             export AWS_SHARED_CREDENTIALS_FILE=/dev/null
+            echo "IMAGE : $IMAGE"
+            echo "ECR_REGISTRY : $ECR_REGISTRY"
             echo "AWS_REGION: $AWS_REGION"
             # ECR URL 추출 (IMAGE 변수에서)
             ECR_URL=$(echo $IMAGE | cut -d'/' -f1)
