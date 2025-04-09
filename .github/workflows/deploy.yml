@@ -95,6 +95,15 @@ jobs:
           script: |
             cd /home/ubuntu
             
+            # AWS 자격증명 설정
+            echo "👉 AWS 자격증명 설정"
+            mkdir -p ~/.aws
+            cat > ~/.aws/credentials << EOL
+            [default]
+            aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            EOL
+            
             # application.yml 설정
             echo "👉 $ENV_TYPE 환경 application.yml 설정"
             mkdir -p config
@@ -105,7 +114,8 @@ jobs:
             echo "👉 ECR 로그인 중..."
             export AWS_REGION=ap-northeast-2
             export ECR_URL=$(echo $IMAGE | cut -d'/' -f1)
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL
+            echo "ECR URL: $ECR_URL"
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL.dkr.ecr.$AWS_REGION.amazonaws.com
             
             # 도커 배포 스크립트 실행
             echo "👉 $ENV_TYPE 환경 Docker 배포 스크립트 실행 시작"
