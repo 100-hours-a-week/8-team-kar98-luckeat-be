@@ -136,10 +136,12 @@ jobs:
           port: 22
           script_stop: true
           debug: true
-          envs: IMAGE ENV_TYPE APPLICATION_YML AWS_REGION_SECRET AWS_SHARED_CREDENTIALS_FILE
-          env:
-            AWS_REGION_SECRET: ${{ env.AWS_REGION }}
-            AWS_SHARED_CREDENTIALS_FILE: /dev/null
+          envs: |
+            IMAGE=${{ env.IMAGE }}
+            ENV_TYPE=${{ env.ENV_TYPE }}
+            APPLICATION_YML=${{ env.APPLICATION_YML }}
+            AWS_REGION_SECRET=${{ env.AWS_REGION }}
+            AWS_SHARED_CREDENTIALS_FILE=/dev/null
           script: |
             echo "👉 ECR 로그인 및 이미지 가져오기"
             
