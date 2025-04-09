@@ -91,7 +91,7 @@ jobs:
           port: 22
           script_stop: true
           debug: true
-          envs: IMAGE ENV_TYPE APPLICATION_YML AWS_REGION_SECRET
+          envs: IMAGE ENV_TYPE APPLICATION_YML
           script: |
             cd /home/ubuntu
             
@@ -103,12 +103,12 @@ jobs:
             
             # ECR 로그인
             echo "👉 ECR 로그인 중..."
-            aws ecr get-login-password --region $AWS_REGION_SECRET | docker login --username AWS --password-stdin $(echo $IMAGE | cut -d'/' -f1) || { echo "ECR 로그인 실패, 대체 방법으로 시도..."; aws ecr get-login --no-include-email --region $AWS_REGION_SECRET | bash; }
+            export AWS_REGION=ap-northeast-2
+            export ECR_URL=$(echo $IMAGE | cut -d'/' -f1)
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL
             
             # 도커 배포 스크립트 실행
             echo "👉 $ENV_TYPE 환경 Docker 배포 스크립트 실행 시작"
             bash docker_deploy.sh
             
             echo "✅ $ENV_TYPE 환경 Docker 배포 완료"
-        env:
-          AWS_REGION_SECRET: ${{ secrets.AWS_REGION }}
