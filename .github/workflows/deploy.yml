@@ -38,27 +38,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 3️⃣ JDK 21 설정 (필요한 경우)
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      # 4️⃣ Sentry 릴리즈 생성
-      - name: Create Sentry release
-        uses: getsentry/action-release@v1
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ktb-sh
-          SENTRY_PROJECT: sentry-back
-        with:
-          environment: ${{ env.SENTRY_ENVIRONMENT }}
-          version: ${{ github.sha }}
-          ignore_missing: true
-          ignore_empty: true
-
-      # 5️⃣ AWS 자격증명 구성 (ECR 사용을 위해)
+      # 3️⃣ AWS 자격증명 구성 (ECR 사용을 위해)
       - name: Configure AWS credentials for ECR
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -66,12 +46,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 6️⃣ Amazon ECR 로그인
+      # 4️⃣ Amazon ECR 로그인
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 7️⃣ Docker 이미지 빌드, 태그, 푸시
+      # 5️⃣ Docker 이미지 빌드, 태그, 푸시
       - name: Build, tag, and push Docker image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -89,28 +69,7 @@ jobs:
           # 환경 변수 설정
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-      # 7️⃣ AWS EC2 서버에 SSH 접속 후 Docker 배포 진행
-      - name: Clean up existing Docker resources on EC2
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          script: |
-            echo "👉 기존 Docker 리소스 정리 중..."
-            # 기존 컨테이너 중지 및 제거
-            docker stop luckeat-backend || true
-            docker rm luckeat-backend || true
-            
-            # 사용하지 않는 이미지 삭제
-            docker images -q | xargs -r docker rmi || true
-            
-            # 사용하지 않는 Docker 자원 정리
-            docker system prune -af
-
+      # 6️⃣ AWS EC2 서버에 SSH 접속 후 애플리케이션 설정
       - name: Configure application.yml on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -127,6 +86,7 @@ jobs:
             echo "$APPLICATION_YML" | base64 --decode > config/application.yml
             mkdir -p logs
 
+      # 7️⃣ ECR 로그인 및 이미지 가져오기
       - name: Login to ECR and pull image
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -136,23 +96,26 @@ jobs:
           port: 22
           script_stop: true
           debug: true
-          envs: IMAGE ENV_TYPE APPLICATION_YML AWS_REGION_SECRET AWS_SHARED_CREDENTIALS_FILE
-          env:
-            AWS_REGION_SECRET: ${{ env.AWS_REGION }}
-            AWS_SHARED_CREDENTIALS_FILE: /dev/null
+          envs: |
+            IMAGE
+            ENV_TYPE
+            APPLICATION_YML
+            AWS_REGION
+            AWS_SHARED_CREDENTIALS_FILE=/dev/null
           script: |
             echo "👉 ECR 로그인 및 이미지 가져오기"
             
             # AWS 자격증명 파일 설정
             export AWS_SHARED_CREDENTIALS_FILE=/dev/null
-            export AWS_REGION=$AWS_REGION_SECRET
+            export AWS_REGION=${{ env.AWS_REGION }}
             
             # ECR 로그인
-            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+            aws ecr get-login-password --region ap-northeast-2  | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
             
             # 이미지 가져오기
             sudo docker pull ${{ env.IMAGE }}
 
+      # 8️⃣ Docker 컨테이너 배포
       - name: Deploy Docker container
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -166,43 +129,31 @@ jobs:
           script: |
             echo "👉 Docker 컨테이너 배포"
             
-            # 색상 설정
-            GREEN="\033[0;32m"
-            RED="\033[0;31m"
-            NC="\033[0m"
-            
-            # 변수 설정
-            CONTAINER_NAME="luckeat-backend"
-            CONFIG_DIR="/home/ubuntu/config"
-            LOG_DIR="/home/ubuntu/logs"
-            PORT_HOST=8080
-            PORT_CONTAINER=8080
+            # 기존 컨테이너 중지 및 제거
+            docker stop luckeat-backend || true
+            docker rm luckeat-backend || true
             
             # 컨테이너 실행
-            echo -e "${GREEN}컨테이너 실행: ${CONTAINER_NAME}...${NC}"
             docker run -d \
-              --name ${CONTAINER_NAME} \
-              -p ${PORT_HOST}:${PORT_CONTAINER} \
-              -v ${CONFIG_DIR}:/app/config \
-              -v ${LOG_DIR}:/app/logs \
+              --name luckeat-backend \
+              -p 8080:8080 \
+              -v /home/ubuntu/config:/app/config \
+              -v /home/ubuntu/logs:/app/logs \
               --restart always \
               ${IMAGE}
             
             # 컨테이너 초기화 대기
-            echo -e "${GREEN}컨테이너 초기화 대기 중...${NC}"
             sleep 10
             
             # API 헬스체크
-            echo -e "${GREEN}API 헬스체크 진행 중...${NC}"
-            API_RESPONSE=$(curl -s http://localhost:${PORT_HOST}/api/v1/stores || true)
+            echo "👉 API 헬스체크 진행 중..."
+            API_RESPONSE=$(curl -s http://localhost:8080/api/v1/stores || true)
             if echo "${API_RESPONSE}" | grep -q "categoryName"; then
-              echo -e "${GREEN}✅ API가 정상적으로 응답하고 있습니다.${NC}"
+              echo "✅ API가 정상적으로 응답하고 있습니다."
             else
-              echo -e "${RED}❌ API 헬스체크 실패: 컨테이너 로그를 확인해 주세요.${NC}"
-              echo -e "${GREEN}컨테이너 로그 확인: docker logs ${CONTAINER_NAME}${NC}"
+              echo "❌ API 헬스체크 실패: 컨테이너 로그를 확인해 주세요."
+              docker logs luckeat-backend
               exit 1
             fi
-            
-            echo -e "${GREEN}🎉 백엔드 Docker 배포가 성공적으로 완료되었습니다.${NC}"
             
             echo "✅ $ENV_TYPE 환경 Docker 배포 완료"
