@@ -3,6 +3,7 @@ package com.luckeat.luckeatbackend.config;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,9 +11,11 @@ import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.luckeat.luckeatbackend.common.filter.IpAttributeFilter;
+import com.luckeat.luckeatbackend.common.interceptor.MetricsInterceptor;
 
 /**
  * 웹 관련 설정 클래스
@@ -21,6 +24,23 @@ import com.luckeat.luckeatbackend.common.filter.IpAttributeFilter;
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    private final MetricsInterceptor metricsInterceptor;
+
+    @Autowired
+    public WebConfig(MetricsInterceptor metricsInterceptor) {
+        this.metricsInterceptor = metricsInterceptor;
+    }
+
+    /**
+     * 인터셉터 등록
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(metricsInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/actuator/**");
+    }
 
     /**
      * CORS 필터 등록
@@ -70,7 +90,8 @@ public class WebConfig implements WebMvcConfigurer {
         return Arrays.asList(
             "https://dxa66rf338pjr.cloudfront.net",
             "https://luckeat.net",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "http://localhost:3001"
         );
     }
 } 
