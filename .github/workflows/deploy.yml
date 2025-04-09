@@ -71,17 +71,25 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 7️⃣ Docker 이미지 빌드, 태그, 푸시 (IMAGE 환경변수에 결과 저장)
+      # 7️⃣ Docker 이미지 빌드, 태그, 푸시
       - name: Build, tag, and push Docker image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # 이미지 빌드
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg SPRING_PROFILES_ACTIVE=${{ env.ENV_TYPE }} .
+          
+          # 이미지 태그 확인
+          docker images | grep $ECR_REGISTRY/$ECR_REPOSITORY
+          
+          # 이미지 푸시
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          # 환경 변수 설정
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-      # 8️⃣ AWS EC2 서버에 SSH 접속 후 Docker 배포 진행
+      # 7️⃣ AWS EC2 서버에 SSH 접속 후 Docker 배포 진행
       - name: Clean up existing Docker resources on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
