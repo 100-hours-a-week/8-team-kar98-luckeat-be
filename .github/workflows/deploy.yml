@@ -10,6 +10,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
+  TAG: ${{ github.sha }}
 
 jobs:
   deploy:
@@ -37,13 +38,13 @@ jobs:
           fi
           echo "==== 환경 변수 설정 완료 ===="
 
-      # 2️⃣ GitHub에서 코드 체크아웃 (전체 history 필요)
+      # 2️⃣ GitHub에서 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      # 3️⃣ JDK 21 설정 (필요한 경우)
+      # 3️⃣ JDK 21 설정
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
@@ -63,164 +64,97 @@ jobs:
           ignore_missing: true
           ignore_empty: true
 
-      # 5️⃣ AWS 자격증명 구성 (ECR 사용을 위해)
-      - name: Configure AWS credentials for ECR
+      # 5️⃣ AWS 자격증명 구성
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 6️⃣ Amazon ECR 로그인
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+      # 6️⃣ ECR 로그인
+      - name: Login to ECR
+        run: |
+          echo "==== ECR 로그인 시작 ===="
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+          echo "==== ECR 로그인 완료 ===="
 
-      # 7️⃣ Docker 이미지 빌드, 태그, 푸시
-      - name: Build, tag, and push Docker image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      # 7️⃣ Docker 이미지 빌드 및 푸시
+      - name: Build and push Docker image
         run: |
           echo "==== Docker 이미지 빌드 시작 ===="
           # 이미지 빌드
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg SPRING_PROFILES_ACTIVE=${{ env.ENV_TYPE }} .
-          echo "Docker 이미지 빌드 완료. 이미지 태그:"
-          docker images | grep $ECR_REGISTRY/$ECR_REPOSITORY
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }} --build-arg SPRING_PROFILES_ACTIVE=${{ env.ENV_TYPE }} .
+          echo "Docker 이미지 빌드 완료"
           
           # 이미지 푸시
           echo "==== 이미지 푸시 시작 ===="
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "이미지 푸시 완료."
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }}
+          echo "이미지 푸시 완료"
+          echo "==== Docker 이미지 빌드 및 푸시 완료 ===="
+
+      # 8️⃣ SSH 키 준비
+      - name: Prepare SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > key.pem
+          chmod 600 key.pem
+
+      # 9️⃣ EC2에 SSH 접속 및 배포
+      - name: SSH into EC2 and Deploy
+        run: |
+          HOST=${{ env.EC2_HOST }}
+          USER=${{ secrets.EC2_USER }}
+          TAG=${{ env.TAG }}
           
-          # 환경 변수 설정
-          echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
-          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          echo "Image : $IMAGE"
-          echo "ECR_REGISTRY : $ECR_REGISTRY"
-          echo "ECR_REPOSITORY : $ECR_REPOSITORY"
-          echo "IMAGE_TAG : $IMAGE_TAG"
-          echo "==== Docker 이미지 빌드, 태그, 푸시 완료 ===="
-
-      # 8️⃣ EC2에서 기존 Docker 리소스 정리
-      - name: Clean up existing Docker resources on EC2
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          script: |
-            echo "==== [EC2] 기존 Docker 리소스 정리 시작 ===="
-            echo "기존 컨테이너 종료 시도..."
-            docker stop luckeat-backend || true && echo "컨테이너 정지 완료" || echo "컨테이너가 실행 중이지 않음"
-            echo "기존 컨테이너 제거 시도..."
-            docker rm luckeat-backend || true && echo "컨테이너 제거 완료" || echo "제거할 컨테이너 없음"
+          echo "🎯 현재 배포할 태그: $TAG"
+          ssh -o StrictHostKeyChecking=no -i key.pem $USER@$HOST "TAG=$TAG bash -s" << EOF
+            set -e
+          
+            echo "🔍 현재 실행 중인 컨테이너 확인"
+            ACTIVE_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'blue-[12]|green-[12]' | head -n 1 || echo 'blue-1')
             
-            echo "사용하지 않는 Docker 이미지 삭제..."
-            docker images -q | xargs -r docker rmi || true && echo "이미지 삭제 완료"
-            
-            echo "Docker 시스템 정리 시작..."
-            docker system prune -af && echo "Docker 시스템 정리 완료"
-            echo "==== [EC2] 기존 Docker 리소스 정리 완료 ===="
-
-      # 9️⃣ EC2에서 application.yml 구성
-      - name: Configure application.yml on EC2
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          envs: ENV_TYPE APPLICATION_YML
-          script: |
-            echo "==== [EC2] application.yml 구성 시작 ===="
-            echo "환경: $ENV_TYPE"
-            mkdir -p config
-            echo "$APPLICATION_YML" | base64 --decode > config/application.yml
-            echo "config/application.yml 생성 완료."
-            mkdir -p logs && echo "logs 디렉토리 생성 완료."
-            echo "==== [EC2] application.yml 구성 완료 ===="
-
-      # 🔟 EC2에서 ECR 로그인 및 이미지 pull
-      - name: Login to ECR and pull image
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          envs: |
-            IMAGE
-            ENV_TYPE
-            APPLICATION_YML
-            AWS_REGION
-            AWS_SHARED_CREDENTIALS_FILE=/dev/null
-          script: |
-            echo "==== [EC2] ECR 로그인 및 이미지 pull 시작 ===="
-            # AWS 자격증명 파일 설정 (비대화형 환경)
-            export AWS_SHARED_CREDENTIALS_FILE=/dev/null
-            echo "IMAGE : $IMAGE"
-            echo "ECR_REGISTRY : $ECR_REGISTRY"
-            echo "AWS_REGION: $AWS_REGION"
-            # ECR URL 추출 (IMAGE 변수에서)
-            ECR_URL=$(echo $IMAGE | cut -d'/' -f1)
-            echo "추출된 ECR_URL: $ECR_URL"
-            # ECR 로그인
-            echo "ECR 로그인 시도..."
-            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_URL && echo "ECR 로그인 성공" || { echo "ECR 로그인 실패"; exit 1; }
-            # 이미지 pull
-            echo "Docker 이미지 pull 시작..."
-            sudo docker pull $IMAGE && echo "Docker 이미지 pull 완료" || { echo "이미지 pull 실패"; exit 1; }
-            echo "==== [EC2] ECR 로그인 및 이미지 pull 완료 ===="
-
-      # 1⓪ EC2에서 Docker 컨테이너 배포
-      - name: Deploy Docker container
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          envs: IMAGE
-          script: |
-            echo "==== [EC2] Docker 컨테이너 배포 시작 ===="
-            # 색상 설정
-            GREEN="\033[0;32m"
-            RED="\033[0;31m"
-            NC="\033[0m"
-            # 변수 설정
-            CONTAINER_NAME="luckeat-backend"
-            CONFIG_DIR="/home/ubuntu/config"
-            LOG_DIR="/home/ubuntu/logs"
-            PORT_HOST=8080
-            PORT_CONTAINER=8080
-            echo -e "${GREEN}컨테이너 실행: ${CONTAINER_NAME}...${NC}"
-            docker run -d \
-              --name ${CONTAINER_NAME} \
-              -p ${PORT_HOST}:${PORT_CONTAINER} \
-              -v ${CONFIG_DIR}:/app/config \
-              -v ${LOG_DIR}:/app/logs \
-              --restart always \
-              ${IMAGE} && echo -e "${GREEN}컨테이너 실행 성공${NC}" || { echo -e "${RED}컨테이너 실행 실패${NC}"; exit 1; }
-            echo -e "${GREEN}컨테이너 초기화 대기 중...${NC}"
-            sleep 10
-            echo -e "${GREEN}API 헬스체크 진행 중...${NC}"
-            API_RESPONSE=$(curl -s http://localhost:${PORT_HOST}/api/v1/stores || true)
-            if echo "${API_RESPONSE}" | grep -q "categoryName"; then
-              echo -e "${GREEN}✅ API가 정상적으로 응답하고 있습니다.${NC}"
+            if [[ "\$ACTIVE_CONTAINER" == "blue-1" || "\$ACTIVE_CONTAINER" == "blue-2" ]]; then
+                NEW_VERSION="green"
+                OLD_VERSION="blue"
             else
-              echo -e "${RED}❌ API 헬스체크 실패: 컨테이너 로그를 확인해 주세요.${NC}"
-              echo -e "${GREEN}컨테이너 로그 확인: docker logs ${CONTAINER_NAME}${NC}"
-              exit 1
+                NEW_VERSION="blue"
+                OLD_VERSION="green"
             fi
-            echo -e "${GREEN}==== [EC2] Docker 컨테이너 배포 완료 ====${NC}"
-            echo "✅ $ENV_TYPE 환경 Docker 배포 완료"
+        
+            echo "🔍 현재 실행 중인 컨테이너: \$ACTIVE_CONTAINER"
+            echo "🔄 다음 배포할 컨테이너 그룹: \$NEW_VERSION"
+            
+            echo "🚀 새로운 컨테이너 배포: \$NEW_VERSION"
+            echo "✅ 사용되는 이미지 태그: \$TAG"
+            
+            # ECR 로그인
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+            
+            # 새로운 이미지 pull
+            docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:\$TAG
+        
+            echo "💾 환경 변수 파일 로드"
+            aws ssm get-parameter --name ${{ secrets.PARAMETER_NAME }} --with-decryption --query 'Parameter.Value' --output text > env_file
+        
+            echo "📦 새로운 컨테이너 실행"
+            docker-compose pull \${NEW_VERSION}-1 \${NEW_VERSION}-2
+            docker-compose up -d --no-deps --force-recreate --remove-orphans --build \${NEW_VERSION}-1 \${NEW_VERSION}-2
+            
+            echo "⏳ 새로운 컨테이너 상태 확인 대기"
+            sleep 30
+            
+            echo "🔍 새로운 컨테이너 상태 확인"
+            NEW_CONTAINER_STATUS=\$(docker ps --filter "name=\${NEW_VERSION}" --format "{{.Status}}")
+            if [[ "\$NEW_CONTAINER_STATUS" == *"Up"* ]]; then
+                echo "✅ 새로운 컨테이너 정상 실행"
+                
+                echo "🗑️ 이전 컨테이너 정리"
+                docker-compose stop \${OLD_VERSION}-1 \${OLD_VERSION}-2
+                docker-compose rm -f \${OLD_VERSION}-1 \${OLD_VERSION}-2
+                
+                echo "🎉 배포 완료"
+            else
+                echo "❌ 새로운 컨테이너 실행 실패"
+                exit 1
+            fi
+          EOF
