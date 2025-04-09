@@ -96,6 +96,9 @@ jobs:
           # 환경 변수 설정
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
           echo "Image : $IMAGE"
+          echo "ECR_REGISTRY : $ECR_REGISTRY"
+          echo "ECR_REPOSITORY : $ECR_REPOSITORY"
+          echo "IMAGE_TAG : $IMAGE_TAG"
           echo "==== Docker 이미지 빌드, 태그, 푸시 완료 ===="
 
       # 8️⃣ EC2에서 기존 Docker 리소스 정리
