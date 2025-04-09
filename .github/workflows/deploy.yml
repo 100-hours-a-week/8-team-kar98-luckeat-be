@@ -103,29 +103,6 @@ jobs:
             # 사용하지 않는 Docker 자원 정리
             docker system prune -af
 
-      - name: Configure AWS credentials on EC2
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script_stop: true
-          debug: true
-          script: |
-            echo "👉 AWS 자격증명 설정"
-            mkdir -p ~/.aws
-            
-            # AWS 자격증명 파일 생성
-            echo "[default]" > ~/.aws/credentials
-            echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-            echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
-            echo "region=ap-northeast-2" >> ~/.aws/credentials
-            
-            # AWS 리전 설정
-            echo "[default]" > ~/.aws/config
-            echo "region=ap-northeast-2" >> ~/.aws/config
-
       - name: Configure application.yml on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -155,7 +132,7 @@ jobs:
             echo "👉 ECR 로그인 및 이미지 가져오기"
             
             # ECR 로그인
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+            aws ecr get-login-password --profile ${{ secrets.IAM_PROFILE_USERNAME }} --region ${{ env.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
             
             # 이미지 가져오기
             sudo docker pull ${{ env.IMAGE }}
