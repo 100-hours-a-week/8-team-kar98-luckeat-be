@@ -70,7 +70,12 @@ jobs:
             # Update docker-compose.yml with new image tags
             sed -i "s|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-.*|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}|g" docker-compose.yml
 
-            # Restart containers
-            docker-compose down
-            docker-compose up -d
+
+            cd /home/ubuntu
+            echo "👉 ${{ env.ENV_TYPE }} 환경 application.yml 설정"
+            mkdir -p config
+            echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
+            echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
+            export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            bash docker_deploy.sh
 
