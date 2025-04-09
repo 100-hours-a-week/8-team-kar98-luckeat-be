@@ -5,7 +5,7 @@ on:
     branches:
       - develop
       - main
-      - 231-bug-deploy-수정
+      - deploy수정
   workflow_dispatch:  # 수동 실행 가능
 
 env:
