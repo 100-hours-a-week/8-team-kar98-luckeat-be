@@ -92,8 +92,6 @@ jobs:
           script_stop: true
           debug: true
           envs: IMAGE ENV_TYPE APPLICATION_YML AWS_REGION_SECRET
-          env:
-            AWS_REGION_SECRET: ${{ secrets.AWS_REGION }}
           script: |
             cd /home/ubuntu
             
@@ -112,3 +110,5 @@ jobs:
             bash docker_deploy.sh
             
             echo "✅ $ENV_TYPE 환경 Docker 배포 완료"
+        env:
+          AWS_REGION_SECRET: ${{ secrets.AWS_REGION }}
