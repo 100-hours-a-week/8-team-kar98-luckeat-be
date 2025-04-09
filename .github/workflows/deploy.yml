@@ -5,44 +5,33 @@ on:
     branches:
       - develop
       - main
-      - 231-bug-deploy-수정
-  workflow_dispatch:  # 수동 실행 가능
-
-env:
-  AWS_REGION: ap-northeast-2
-  TAG: ${{ github.sha }}
+  workflow_dispatch: # 수동 실행 가능
 
 jobs:
   deploy:
     runs-on: self-hosted
 
     steps:
-      # 1️⃣ 환경 변수 설정 (브랜치별 prod/dev 구분)
+      # 1️⃣ 환경 변수 설정
       - name: Set environment variables
         run: |
-          echo "==== 환경 변수 설정 시작 ===="
           if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
             echo "ENV_TYPE=prod" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
             echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
-            echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
-            echo "환경: prod 설정 완료"
           else
             echo "ENV_TYPE=dev" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.DEV_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
             echo "SENTRY_ENVIRONMENT=development" >> $GITHUB_ENV
-            echo "ECR_REPOSITORY=luckeat-dev" >> $GITHUB_ENV
-            echo "환경: dev 설정 완료"
           fi
-          echo "==== 환경 변수 설정 완료 ===="
 
       # 2️⃣ GitHub에서 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Sentry release를 위해 전체 git history 필요
 
       # 3️⃣ JDK 21 설정
       - name: Set up JDK 21
@@ -61,100 +50,25 @@ jobs:
         with:
           environment: ${{ env.SENTRY_ENVIRONMENT }}
           version: ${{ github.sha }}
-          ignore_missing: true
-          ignore_empty: true
+          ignore_missing: true  # 이전 릴리즈를 찾을 수 없을 때 에러 무시
+          ignore_empty: true  # 커밋이 없을 때 에러 무시
 
-      # 5️⃣ AWS 자격증명 구성
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      # 5️⃣ AWS EC2 서버에 SSH로 접속하여 자동 배포 스크립트 실행
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v0.1.10
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      # 6️⃣ ECR 로그인
-      - name: Login to ECR
-        run: |
-          echo "==== ECR 로그인 시작 ===="
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-          echo "==== ECR 로그인 완료 ===="
-
-      # 7️⃣ Docker 이미지 빌드 및 푸시
-      - name: Build and push Docker image
-        run: |
-          echo "==== Docker 이미지 빌드 시작 ===="
-          # 이미지 빌드
-          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }} --build-arg SPRING_PROFILES_ACTIVE=${{ env.ENV_TYPE }} .
-          echo "Docker 이미지 빌드 완료"
-          
-          # 이미지 푸시
-          echo "==== 이미지 푸시 시작 ===="
-          docker push ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }}
-          echo "이미지 푸시 완료"
-          echo "==== Docker 이미지 빌드 및 푸시 완료 ===="
-
-      # 8️⃣ SSH 키 준비
-      - name: Prepare SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > key.pem
-          chmod 600 key.pem
-
-      # 9️⃣ EC2에 SSH 접속 및 배포
-      - name: SSH into EC2 and Deploy
-        run: |
-          HOST=${{ env.EC2_HOST }}
-          USER=${{ secrets.EC2_USER }}
-          TAG=${{ env.TAG }}
-          
-          echo "🎯 현재 배포할 태그: $TAG"
-          ssh -o StrictHostKeyChecking=no -i key.pem $USER@$HOST "TAG=$TAG bash -s" << EOF
-            set -e
-          
-            echo "🔍 현재 실행 중인 컨테이너 확인"
-            ACTIVE_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'blue-[12]|green-[12]' | head -n 1 || echo 'blue-1')
-            
-            if [[ "\$ACTIVE_CONTAINER" == "blue-1" || "\$ACTIVE_CONTAINER" == "blue-2" ]]; then
-                NEW_VERSION="green"
-                OLD_VERSION="blue"
-            else
-                NEW_VERSION="blue"
-                OLD_VERSION="green"
-            fi
-        
-            echo "🔍 현재 실행 중인 컨테이너: \$ACTIVE_CONTAINER"
-            echo "🔄 다음 배포할 컨테이너 그룹: \$NEW_VERSION"
-            
-            echo "🚀 새로운 컨테이너 배포: \$NEW_VERSION"
-            echo "✅ 사용되는 이미지 태그: \$TAG"
-            
-            # ECR 로그인
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-            
-            # 새로운 이미지 pull
-            docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:\$TAG
-        
-            echo "💾 환경 변수 파일 로드"
-            aws ssm get-parameter --name ${{ secrets.PARAMETER_NAME }} --with-decryption --query 'Parameter.Value' --output text > env_file
-        
-            echo "📦 새로운 컨테이너 실행"
-            docker-compose pull \${NEW_VERSION}-1 \${NEW_VERSION}-2
-            docker-compose up -d --no-deps --force-recreate --remove-orphans --build \${NEW_VERSION}-1 \${NEW_VERSION}-2
-            
-            echo "⏳ 새로운 컨테이너 상태 확인 대기"
-            sleep 30
-            
-            echo "🔍 새로운 컨테이너 상태 확인"
-            NEW_CONTAINER_STATUS=\$(docker ps --filter "name=\${NEW_VERSION}" --format "{{.Status}}")
-            if [[ "\$NEW_CONTAINER_STATUS" == *"Up"* ]]; then
-                echo "✅ 새로운 컨테이너 정상 실행"
-                
-                echo "🗑️ 이전 컨테이너 정리"
-                docker-compose stop \${OLD_VERSION}-1 \${OLD_VERSION}-2
-                docker-compose rm -f \${OLD_VERSION}-1 \${OLD_VERSION}-2
-                
-                echo "🎉 배포 완료"
-            else
-                echo "❌ 새로운 컨테이너 실행 실패"
-                exit 1
-            fi
-          EOF
+          host: ${{ env.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }} # 공통 사용자 이름 사용
+          key: ${{ secrets.EC2_SSH_KEY }} # 공통 SSH 키 사용
+          port: 22
+          script_stop: true
+          debug: true
+          script: |
+            cd /home/ubuntu
+            echo "👉 ${{ env.ENV_TYPE }} 환경 application.yml 설정"
+            mkdir -p config
+            echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
+            echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
+            export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            bash deploy.sh
+            echo "✅ ${{ env.ENV_TYPE }} 환경 배포 완료"
