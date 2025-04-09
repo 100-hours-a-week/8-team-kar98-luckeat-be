@@ -10,7 +10,6 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: luckeat-dev
 
 jobs:
   deploy:
@@ -20,6 +19,22 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: 8-team-kar98-luckeat-be
+
+      - name: Set environment variables
+        run: |
+          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
+            echo "ENV_TYPE=prod" >> $GITHUB_ENV
+            echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
+            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+            echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
+            echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
+          else
+            echo "ENV_TYPE=dev" >> $GITHUB_ENV
+            echo "EC2_HOST=${{ secrets.DEV_EC2_HOST }}" >> $GITHUB_ENV
+            echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
+            echo "SENTRY_ENVIRONMENT=development" >> $GITHUB_ENV
+            echo "ECR_REPOSITORY=luckeat-dev" >> $GITHUB_ENV
+          fi
 
       - name: Install Docker Compose
         run: |
