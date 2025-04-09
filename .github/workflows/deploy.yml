@@ -136,11 +136,16 @@ jobs:
           port: 22
           script_stop: true
           debug: true
+          envs: IMAGE ENV_TYPE APPLICATION_YML AWS_REGION_SECRET AWS_SHARED_CREDENTIALS_FILE
           script: |
             echo "👉 ECR 로그인 및 이미지 가져오기"
             
+            # AWS 자격증명 파일 설정
+            export AWS_SHARED_CREDENTIALS_FILE=/dev/null
+            export AWS_REGION=$AWS_REGION_SECRET
+            
             # ECR 로그인
-            aws ecr get-login-password --profile ${{ secrets.IAM_PROFILE_USERNAME }} --region ${{ env.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
             
             # 이미지 가져오기
             sudo docker pull ${{ env.IMAGE }}
