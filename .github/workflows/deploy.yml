@@ -5,6 +5,7 @@ on:
     branches:
       - develop
       - main
+      - 231-bug-deploy-수정
   workflow_dispatch:  # 수동 실행 가능
 
 env:
@@ -18,19 +19,23 @@ jobs:
       # 1️⃣ 환경 변수 설정 (브랜치별 prod/dev 구분)
       - name: Set environment variables
         run: |
+          echo "==== 환경 변수 설정 시작 ===="
           if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
             echo "ENV_TYPE=prod" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
             echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
             echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
+            echo "환경: prod 설정 완료"
           else
             echo "ENV_TYPE=dev" >> $GITHUB_ENV
             echo "EC2_HOST=${{ secrets.DEV_EC2_HOST }}" >> $GITHUB_ENV
             echo "APPLICATION_YML=${{ secrets.DEV_APPLICATION_YML }}" >> $GITHUB_ENV
             echo "SENTRY_ENVIRONMENT=development" >> $GITHUB_ENV
             echo "ECR_REPOSITORY=luckeat-dev" >> $GITHUB_ENV
+            echo "환경: dev 설정 완료"
           fi
+          echo "==== 환경 변수 설정 완료 ===="
 
       # 2️⃣ GitHub에서 코드 체크아웃 (전체 history 필요)
       - name: Checkout Repository
@@ -77,19 +82,22 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo "==== Docker 이미지 빌드 시작 ===="
           # 이미지 빌드
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg SPRING_PROFILES_ACTIVE=${{ env.ENV_TYPE }} .
-          
-          # 이미지 태그 확인
+          echo "Docker 이미지 빌드 완료. 이미지 태그:"
           docker images | grep $ECR_REGISTRY/$ECR_REPOSITORY
           
           # 이미지 푸시
+          echo "==== 이미지 푸시 시작 ===="
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "이미지 푸시 완료."
           
           # 환경 변수 설정
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "==== Docker 이미지 빌드, 태그, 푸시 완료 ===="
 
-      # 7️⃣ AWS EC2 서버에 SSH 접속 후 Docker 배포 진행
+      # 8️⃣ EC2에서 기존 Docker 리소스 정리
       - name: Clean up existing Docker resources on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -100,17 +108,20 @@ jobs:
           script_stop: true
           debug: true
           script: |
-            echo "👉 기존 Docker 리소스 정리 중..."
-            # 기존 컨테이너 중지 및 제거
-            docker stop luckeat-backend || true
-            docker rm luckeat-backend || true
+            echo "==== [EC2] 기존 Docker 리소스 정리 시작 ===="
+            echo "기존 컨테이너 종료 시도..."
+            docker stop luckeat-backend || true && echo "컨테이너 정지 완료" || echo "컨테이너가 실행 중이지 않음"
+            echo "기존 컨테이너 제거 시도..."
+            docker rm luckeat-backend || true && echo "컨테이너 제거 완료" || echo "제거할 컨테이너 없음"
             
-            # 사용하지 않는 이미지 삭제
-            docker images -q | xargs -r docker rmi || true
+            echo "사용하지 않는 Docker 이미지 삭제..."
+            docker images -q | xargs -r docker rmi || true && echo "이미지 삭제 완료"
             
-            # 사용하지 않는 Docker 자원 정리
-            docker system prune -af
+            echo "Docker 시스템 정리 시작..."
+            docker system prune -af && echo "Docker 시스템 정리 완료"
+            echo "==== [EC2] 기존 Docker 리소스 정리 완료 ===="
 
+      # 9️⃣ EC2에서 application.yml 구성
       - name: Configure application.yml on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -122,11 +133,15 @@ jobs:
           debug: true
           envs: ENV_TYPE APPLICATION_YML
           script: |
-            echo "👉 $ENV_TYPE 환경 application.yml 설정"
+            echo "==== [EC2] application.yml 구성 시작 ===="
+            echo "환경: $ENV_TYPE"
             mkdir -p config
             echo "$APPLICATION_YML" | base64 --decode > config/application.yml
-            mkdir -p logs
+            echo "config/application.yml 생성 완료."
+            mkdir -p logs && echo "logs 디렉토리 생성 완료."
+            echo "==== [EC2] application.yml 구성 완료 ===="
 
+      # 🔟 EC2에서 ECR 로그인 및 이미지 pull
       - name: Login to ECR and pull image
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -143,18 +158,22 @@ jobs:
             AWS_REGION
             AWS_SHARED_CREDENTIALS_FILE=/dev/null
           script: |
-            echo "👉 ECR 로그인 및 이미지 가져오기"
-            
-            # AWS 자격증명 파일 설정
+            echo "==== [EC2] ECR 로그인 및 이미지 pull 시작 ===="
+            # AWS 자격증명 파일 설정 (비대화형 환경)
             export AWS_SHARED_CREDENTIALS_FILE=/dev/null
-            export AWS_REGION=$AWS_REGION_SECRET
-            
+            echo "AWS_REGION: $AWS_REGION"
+            # ECR URL 추출 (IMAGE 변수에서)
+            ECR_URL=$(echo $IMAGE | cut -d'/' -f1)
+            echo "추출된 ECR_URL: $ECR_URL"
             # ECR 로그인
-            aws ecr get-login-password --region ap-northeast-2 | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-            
-            # 이미지 가져오기
-            sudo docker pull ${{ env.IMAGE }}
+            echo "ECR 로그인 시도..."
+            aws ecr get-login-password --region $AWS_REGION | sudo docker login --username AWS --password-stdin $ECR_URL && echo "ECR 로그인 성공" || { echo "ECR 로그인 실패"; exit 1; }
+            # 이미지 pull
+            echo "Docker 이미지 pull 시작..."
+            sudo docker pull $IMAGE && echo "Docker 이미지 pull 완료" || { echo "이미지 pull 실패"; exit 1; }
+            echo "==== [EC2] ECR 로그인 및 이미지 pull 완료 ===="
 
+      # 1⓪ EC2에서 Docker 컨테이너 배포
       - name: Deploy Docker container
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -166,21 +185,17 @@ jobs:
           debug: true
           envs: IMAGE
           script: |
-            echo "👉 Docker 컨테이너 배포"
-            
+            echo "==== [EC2] Docker 컨테이너 배포 시작 ===="
             # 색상 설정
             GREEN="\033[0;32m"
             RED="\033[0;31m"
             NC="\033[0m"
-            
             # 변수 설정
             CONTAINER_NAME="luckeat-backend"
             CONFIG_DIR="/home/ubuntu/config"
             LOG_DIR="/home/ubuntu/logs"
             PORT_HOST=8080
             PORT_CONTAINER=8080
-            
-            # 컨테이너 실행
             echo -e "${GREEN}컨테이너 실행: ${CONTAINER_NAME}...${NC}"
             docker run -d \
               --name ${CONTAINER_NAME} \
@@ -188,13 +203,9 @@ jobs:
               -v ${CONFIG_DIR}:/app/config \
               -v ${LOG_DIR}:/app/logs \
               --restart always \
-              ${IMAGE}
-            
-            # 컨테이너 초기화 대기
+              ${IMAGE} && echo -e "${GREEN}컨테이너 실행 성공${NC}" || { echo -e "${RED}컨테이너 실행 실패${NC}"; exit 1; }
             echo -e "${GREEN}컨테이너 초기화 대기 중...${NC}"
             sleep 10
-            
-            # API 헬스체크
             echo -e "${GREEN}API 헬스체크 진행 중...${NC}"
             API_RESPONSE=$(curl -s http://localhost:${PORT_HOST}/api/v1/stores || true)
             if echo "${API_RESPONSE}" | grep -q "categoryName"; then
@@ -204,7 +215,5 @@ jobs:
               echo -e "${GREEN}컨테이너 로그 확인: docker logs ${CONTAINER_NAME}${NC}"
               exit 1
             fi
-            
-            echo -e "${GREEN}🎉 백엔드 Docker 배포가 성공적으로 완료되었습니다.${NC}"
-            
+            echo -e "${GREEN}==== [EC2] Docker 컨테이너 배포 완료 ====${NC}"
             echo "✅ $ENV_TYPE 환경 Docker 배포 완료"
