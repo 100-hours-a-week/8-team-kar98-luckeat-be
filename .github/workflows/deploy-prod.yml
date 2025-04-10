@@ -3,9 +3,9 @@ name: 🚀 deploy-prod
 on:
   push:
     branches:
-      - main
-      - deploy수정
-  workflow_dispatch:
+      - main           # main 브랜치에 푸시될 때만 실행
+      - "deploy수정"    # (필요 시) 브랜치 이름에 한글이 포함될 경우에는 반드시 따옴표 처리
+  workflow_dispatch:   # 수동 실행도 가능
 
 env:
   AWS_REGION: ap-northeast-2
@@ -42,17 +42,16 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 5) 이미지 빌드 & 푸시
+      # 5) 백엔드 이미지 빌드 & 푸시
       - name: Build & Push Docker image
-        run: |
-          cd 8-team-kar98-luckeat-be
-          IMAGE_TAG="backend-${GITHUB_SHA::8}"
-          docker build \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         env:
           ECR_REGISTRY:   ${{ env.ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+        run: |
+          cd 8-team-kar98-luckeat-be
+          IMAGE_TAG="backend-${GITHUB_SHA::8}"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       # 6) Prod EC2에 SSH 배포
       - name: Deploy to EC2
@@ -62,12 +61,12 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
         env:
-          AWS_REGION:       ${{ env.AWS_REGION }}
-          ECR_REGISTRY:     ${{ env.ECR_REGISTRY }}
-          ECR_REPOSITORY:   ${{ env.ECR_REPOSITORY }}
-          IMAGE_TAG:        backend-${{ github.sha::8 }}
-          APPLICATION_YML:  ${{ secrets.PROD_APPLICATION_YML }}
-          SENTRY_AUTH_TOKEN:$ {{ secrets.SENTRY_AUTH_TOKEN }}
+          AWS_REGION:        ${{ env.AWS_REGION }}
+          ECR_REGISTRY:      ${{ env.ECR_REGISTRY }}
+          ECR_REPOSITORY:    ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG:         backend-${{ github.sha::8 }}
+          APPLICATION_YML:   ${{ secrets.PROD_APPLICATION_YML }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         script: |
           set -euo pipefail
 
@@ -75,7 +74,7 @@ jobs:
           docker system prune -a -f
           docker volume prune -f
 
-          # 2) ECR 로그인 & Backend 이미지 Pull
+          # 2) ECR 로그인 & 백엔드 이미지 Pull
           aws ecr get-login-password --region "$AWS_REGION" \
             | docker login --username AWS --password-stdin "$ECR_REGISTRY"
           docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
@@ -85,7 +84,7 @@ jobs:
             "s|image: $ECR_REGISTRY/$ECR_REPOSITORY:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" \
             /home/ubuntu/docker-compose.yml
 
-          # 4) prod 환경 application.yml 설정
+          # 4) prod 환경용 application.yml 설정
           cd /home/ubuntu
           mkdir -p config
           echo "$APPLICATION_YML" | base64 --decode > config/application.yml
