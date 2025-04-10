@@ -68,12 +68,7 @@ jobs:
             # Pull latest images
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
             docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}
-            docker pull prom/prometheus:latest
-            docker pull grafana/grafana:latest
-            docker pull grafana/loki:2.6.1
-            docker pull grafana/promtail:latest
-            docker pull prom/mysqld-exporter:v0.14.0
-
+            
             # Update docker-compose.yml with new image tags
             sed -i "s|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-.*|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}|g" docker-compose.yml
 
