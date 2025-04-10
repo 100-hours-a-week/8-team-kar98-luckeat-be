@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: luckeat
+  ECR_REPOSITORY: luckeat-prod
   EB_ENV_NAME: Luckeat-prod
   EB_APP_NAME: luckeat
 
