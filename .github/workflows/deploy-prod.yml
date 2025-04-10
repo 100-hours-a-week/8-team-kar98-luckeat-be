@@ -9,8 +9,6 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-  ECR_REPOSITORY: luckeat-prod
 
 jobs:
   deploy:
@@ -18,19 +16,28 @@ jobs:
 
     steps:
       # 1) 코드 체크아웃
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
         with:
           path: 8-team-kar98-luckeat-be
 
-      # 2) Docker Compose 설치 (Runner)
+      # 2) 환경 변수 설정 (항상 prod)
+      - name: Set environment variables
+        run: |
+          echo "ENV_TYPE=prod"           >> $GITHUB_ENV
+          echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
+          echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+          echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
+
+      # 3) Docker Compose 설치 (Runner)
       - name: Install Docker Compose
         run: |
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" \
             -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
-      # 3) AWS 자격증명 설정 (Runner)
+      # 4) AWS 자격증명 설정 (Runner)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -38,61 +45,59 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-      # 4) ECR 로그인 (Runner)
+      # 5) ECR 로그인 (Runner)
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      # 5) 백엔드 이미지 빌드 & 푸시
-      - name: Build & Push Docker image
+      # 6) 백엔드 이미지 빌드 & 푸시
+      - name: Build and push Docker images
         env:
-          ECR_REGISTRY:   ${{ env.ECR_REGISTRY }}
+          ECR_REGISTRY:   ${{ secrets.ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
         run: |
           cd 8-team-kar98-luckeat-be
           IMAGE_TAG="backend-${GITHUB_SHA::8}"
-          # 위 줄도 수정: 슬라이싱은 Bash에서만 동작하므로
-          IMAGE_TAG="backend-$(echo $GITHUB_SHA | cut -c1-8)"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 6) Prod EC2에 SSH 배포
+      # 7) Prod EC2에 SSH 배포
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
-        env:
-          AWS_REGION:        ${{ env.AWS_REGION }}
-          ECR_REGISTRY:      ${{ env.ECR_REGISTRY }}
-          ECR_REPOSITORY:    ${{ env.ECR_REPOSITORY }}
-          IMAGE_TAG:         backend-${{ github.sha.substring(0, 8) }}
-          APPLICATION_YML:   ${{ secrets.PROD_APPLICATION_YML }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         with:
-          host:     ${{ secrets.PROD_EC2_HOST }}
+          host:     ${{ env.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -euo pipefail
+        env:
+          AWS_REGION:        ${{ env.AWS_REGION }}
+          ECR_REGISTRY:      ${{ secrets.ECR_REGISTRY }}
+          ECR_REPOSITORY:    ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG:         backend-${{ github.sha::8 }}
+          APPLICATION_YML:   ${{ env.APPLICATION_YML }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        script: |
+          set -euo pipefail
 
-            # 1) Docker 리소스 정리
-            docker system prune -a -f
-            docker volume prune -f
+          # 1) 불필요한 Docker 리소스 정리
+          docker system prune -a -f
+          docker volume prune -f
 
-            # 2) ECR 로그인 & 백엔드 이미지 Pull
-            aws ecr get-login-password --region "$AWS_REGION" \
-              | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          # 2) ECR 로그인 & 백엔드 이미지 Pull
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+          docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-            # 3) docker-compose.yml에 새 태그 반영
-            sed -i \
-              "s|image: $ECR_REGISTRY/$ECR_REPOSITORY:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" \
-              /home/ubuntu/docker-compose.yml
+          # 3) docker-compose.yml에 새 태그 반영
+          sed -i \
+            "s|image: $ECR_REGISTRY/$ECR_REPOSITORY:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" \
+            /home/ubuntu/docker-compose.yml
 
-            # 4) prod 환경용 application.yml 설정
-            cd /home/ubuntu
-            mkdir -p config
-            echo "$APPLICATION_YML" | base64 --decode > config/application.yml
+          # 4) prod 환경용 application.yml 설정
+          cd /home/ubuntu
+          mkdir -p config
+          echo "$APPLICATION_YML" | base64 --decode > config/application.yml
 
-            # 5) Sentry 설정
-            export SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
+          # 5) Sentry 설정
+          export SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
 
-            # 6) 배포 스크립트 실행
-            bash docker_deploy.sh
+          # 6) 배포 스크립트 실행
+          bash docker_deploy.sh
