@@ -3,7 +3,7 @@ name: 🚀 deploy to prod
 on:
   push:
     branches:
-      - main
+      - deploy-test/covy
 
 env:
   AWS_REGION: ap-northeast-2
