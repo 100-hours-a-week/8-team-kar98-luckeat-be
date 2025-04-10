@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - deploy수정
-  workflow_dispatch:
+  workflow_dispatch:  # 수동 실행 가능
 
 env:
   AWS_REGION: ap-northeast-2
@@ -21,24 +21,17 @@ jobs:
 
       - name: Set environment variables
         run: |
-          echo "🛠️ Setting env vars..."
-          echo "ENV_TYPE=prod" >> $GITHUB_ENV
-          echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
-          echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
-          echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
-          echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
-          echo "✅ Env vars set:"
-          echo "   ENV_TYPE=$ENV_TYPE"
-          echo "   EC2_HOST=$EC2_HOST"
-          echo "   ECR_REPOSITORY=$ECR_REPOSITORY"
+            echo "ENV_TYPE=prod" >> $GITHUB_ENV
+            echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
+            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
+            echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
+            echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
+
 
       - name: Install Docker Compose
         run: |
-          echo "🛠️ Installing Docker Compose..."
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" \
-            -o /usr/local/bin/docker-compose
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
-          echo "✅ Docker Compose version: $(docker-compose --version)"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -46,7 +39,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -56,14 +48,11 @@ jobs:
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         run: |
-          echo "🛠️ Building & pushing Docker image..."
           cd 8-team-kar98-luckeat-be
-          echo "   Current dir: $(pwd)"
-          echo "   Listing files:"; ls -1
+          
+          # Build and push backend image
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
-          echo "✅ Built $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}"
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
-          echo "✅ Pushed to $ECR_REGISTRY/$ECR_REPOSITORY"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
@@ -72,39 +61,28 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "🛠️ SSH into EC2 and start deployment"
-            echo "👉 Pruning Docker system..."
+            # 디스크 공간 정리
             docker system prune -a -f
             docker volume prune -f
-            echo "✅ Docker pruned"
 
-            echo "👉 Logging in to ECR on EC2..."
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} \
-              | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-            echo "👉 Pulling backend image..."
-            docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }} \
-              && echo "✅ Pulled backend image"
-            echo "👉 Pulling monitoring images..."
-            docker pull prom/prometheus:latest \
-              && docker pull grafana/grafana:latest \
-              && docker pull grafana/loki:2.6.1 \
-              && docker pull grafana/promtail:latest \
-              && docker pull prom/mysqld-exporter:v0.14.0
-            echo "✅ All images pulled"
+            # Pull latest images
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+            docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}
+            docker pull prom/prometheus:latest
+            docker pull grafana/grafana:latest
+            docker pull grafana/loki:2.6.1
+            docker pull grafana/promtail:latest
+            docker pull prom/mysqld-exporter:v0.14.0
 
-            echo "👉 Updating docker-compose.yml"
-            sed -i "s|image: .*/${{ env.ECR_REPOSITORY }}:.*|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}|g" docker-compose.yml
-            echo "✅ docker-compose.yml updated:"
-            grep "image:" docker-compose.yml
+            # Update docker-compose.yml with new image tags
+            sed -i "s|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-.*|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}|g" docker-compose.yml
 
-            echo "👉 Writing application.yml"
+
             cd /home/ubuntu
+            echo "👉 ${{ env.ENV_TYPE }} 환경 application.yml 설정"
             mkdir -p config
             echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
-            echo "✅ application.yml content:"
-            sed -n '1,5p' config/application.yml
-
-            echo "👉 Running docker_deploy.sh"
+            echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
             export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
             bash docker_deploy.sh
-            echo "✅ docker_deploy.sh finished"
+
