@@ -1,7 +1,5 @@
 package com.luckeat.luckeatbackend.security;
 
-import java.util.Arrays;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -50,12 +48,13 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				// 공개 엔드포인트 (인증 불필요)
 				.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+				.requestMatchers("/api/actuator/**").permitAll()
 				.requestMatchers("/api/auth/**").permitAll()
 				.requestMatchers("/api/users/signup").permitAll()
 				.requestMatchers("/api/users/login").permitAll()
 				.requestMatchers("/api/v1/users/login").permitAll()
 				.requestMatchers("/api/v1/users/register").permitAll()
-				.requestMatchers("/api/actuator/**").permitAll()
+				.requestMatchers("/api/metrics-test/**").permitAll() // 메트릭 테스트 엔드포인트 허용
 				.requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/v1/stores/**").permitAll()
 				.requestMatchers("/s/**").permitAll()

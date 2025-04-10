@@ -1,0 +1,58 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: spring_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: luckeat
+          app: luckeat-app
+          container: luckeat-container
+          pod: luckeat-pod
+          stream: app-logs
+          __path__: /var/log/luckeat/application.log
+
+  - job_name: spring_access_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: luckeat-access
+          app: luckeat-app
+          container: luckeat-container
+          pod: luckeat-pod
+          stream: access-logs
+          __path__: /var/log/luckeat/access_log*.log
+
+  - job_name: spring_error_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: luckeat-error
+          app: luckeat-app
+          container: luckeat-container
+          pod: luckeat-pod
+          stream: error-logs
+          __path__: /var/log/luckeat/error.log
+
+  - job_name: spring_api_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: luckeat-api
+          app: luckeat-app
+          container: luckeat-container
+          pod: luckeat-pod
+          stream: api-logs
+          __path__: /var/log/luckeat/api.log

@@ -34,7 +34,8 @@ public class RegisterRequestDto {
     @Schema(description = "사용자 닉네임", example = "홍길동", required = true)
     private String nickname;
     
-    @NotNull(message = "역할은 필수입니다")
-    @Schema(description = "사용자 역할 (BUYER, SELLER, ADMIN)", example = "BUYER", required = true)
-    private User.Role role;
+    @NotBlank(message = "역할은 필수 입력 항목입니다.")
+    @Pattern(regexp = "^(BUYER|SELLER)$", message = "역할은 BUYER 또는 SELLER만 가능합니다")
+    @Schema(description = "사용자 역할 (BUYER 또는 SELLER)", example = "BUYER", required = true)
+    private String role;
 } 
