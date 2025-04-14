@@ -1,0 +1,38 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "863518460358.dkr.ecr.ap-northeast-2.amazonaws.com/luckeat-prod",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 8080,
+      "HostPort": 8080
+    }
+  ],
+  "Volumes": [
+    {
+      "Host": {
+        "SourcePath": "/var/app/current/config"
+      },
+      "Container": {
+        "ContainerPath": "/app/config",
+        "ReadOnly": true
+      }
+    }
+  ],
+  "Logging": "/var/log/app",
+  "Memory": 1024,
+  "HealthCheck": {
+    "Command": "curl -f http://localhost:8080/api/actuator/health || exit 1",
+    "Interval": "30s",
+    "Timeout": "5s",
+    "Retries": 3,
+    "StartPeriod": "40s"
+  },
+  "Command": [
+  "/bin/sh",
+  "-c",
+  "mkdir -p /app/config && cp -r /var/app/current/config/* /app/config/ && java -Dspring.config.additional-location=file:/app/config/ -jar /app/app.jar"
+  ]
+}

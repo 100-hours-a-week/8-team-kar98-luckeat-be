@@ -16,6 +16,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 COPY --from=build /app/build/libs/*.jar app.jar
+COPY src/main/resources/application.yml /app/config/application.yml
 
 EXPOSE 8080
 
