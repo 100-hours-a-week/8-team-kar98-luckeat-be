@@ -1,4 +1,4 @@
-name: 🚀 deploy-dev
+name: 🚀 deploy
 
 on:
   push:
@@ -8,6 +8,10 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
+  ENV_TYPE: dev
+  EC2_HOST: ${{ secrets.DEV_EC2_HOST }}
+  APPLICATION_YML: ${{ secrets.DEV_APPLICATION_YML }}
+  SENTRY_ENVIRONMENT: development
   ECR_REPOSITORY: luckeat-dev
   EB_ENVIRONMENT_NAME: luckeat-dev
   EB_APPLICATION_NAME: luckeat
@@ -35,25 +39,27 @@ jobs:
 
       - name: Build and push Docker image
         env:
-          ECR_REGISTRY: 863518460358.dkr.ecr.ap-northeast-2.amazonaws.com
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         run: |
           cd 8-team-kar98-luckeat-be
           
           # application.yml 생성
-          echo "${{ secrets.DEV_APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+          echo "${{ env.APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
           
           # Build and push backend image
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Generate Dockerrun.aws.json
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         run: |
           cd 8-team-kar98-luckeat-be
           cat > Dockerrun.aws.json << EOF
           {
             "AWSEBDockerrunVersion": "1",
             "Image": {
-              "Name": "863518460358.dkr.ecr.ap-northeast-2.amazonaws.com/luckeat-dev:latest",
+              "Name": "$ECR_REGISTRY/$ECR_REPOSITORY:latest",
               "Update": "true"
             },
             "Ports": [
@@ -80,7 +86,7 @@ jobs:
         run: |
           cd 8-team-kar98-luckeat-be
           mkdir -p .ebextensions
-          echo "${{ secrets.DEV_APPLICATION_YML }}" | base64 --decode > .ebextensions/application.yml
+          echo "${{ env.APPLICATION_YML }}" | base64 --decode > .ebextensions/application.yml
 
       - name: Create ZIP file
         run: |
