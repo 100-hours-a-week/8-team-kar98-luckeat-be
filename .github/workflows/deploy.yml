@@ -33,6 +33,19 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: 863518460358.dkr.ecr.ap-northeast-2.amazonaws.com
+        run: |
+          cd 8-team-kar98-luckeat-be
+          
+          # application.yml 생성
+          echo "${{ secrets.DEV_APPLICATION_YML }}" | base64 --decode > src/main/resources/application.yml
+          
+          # Build and push backend image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
       - name: Generate Dockerrun.aws.json
         run: |
           cd 8-team-kar98-luckeat-be
