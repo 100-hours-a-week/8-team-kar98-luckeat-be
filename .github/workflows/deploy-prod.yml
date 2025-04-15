@@ -42,80 +42,102 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
 
+      - name: Update Launch Template
+        run: |
+          # UserData 스크립트 생성
+          USERDATA=$(cat << 'EOF' | base64 -w 0
+          #!/bin/bash
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+          docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
+          docker stop $(docker ps -aq) || true
+          docker rm $(docker ps -aq) || true
+          docker run -d \
+            -p 8080:8080 \
+            --name luckeat \
+            --restart always \
+            ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
+          EOF
+          )
+
+          # 새로운 시작 템플릿 버전 생성
+          aws ec2 create-launch-template-version \
+            --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} \
+            --version-description "New version with ${{ github.sha }}" \
+            --source-version 1 \
+            --launch-template-data "{
+              \"UserData\": \"$USERDATA\"
+            }"
+
+          # 최신 버전 번호 가져오기
+          LATEST_VERSION=$(aws ec2 describe-launch-template-versions \
+            --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} \
+            --query 'LaunchTemplateVersions[0].VersionNumber' \
+            --output text)
+
+          # ASG 업데이트
+          aws autoscaling update-auto-scaling-group \
+            --auto-scaling-group-name $ASG_NAME \
+            --launch-template "LaunchTemplateId=${{ secrets.LAUNCH_TEMPLATE_ID }},Version=$LATEST_VERSION"
+
       - name: Deploy with zero downtime
         run: |
-          # 현재 ASG 정보 가져오기
-          echo "Fetching current ASG information..."
+          echo "Starting zero-downtime deployment..."
+          
+          # 현재 ASG 상태 확인
+          echo "Checking current ASG status..."
           CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
             --auto-scaling-group-name $ASG_NAME \
             --query 'AutoScalingGroups[0].DesiredCapacity' \
             --output text)
           
-          CURRENT_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-name $ASG_NAME \
-            --query 'AutoScalingGroups[0].Instances[0].InstanceId' \
-            --output text)
-          
           echo "Current capacity: $CURRENT_CAPACITY"
-          echo "Current instance: $CURRENT_INSTANCE_ID"
           
-          # ASG capacity 2로 증가
-          echo "Increasing ASG capacity to 2..."
+          # ASG capacity를 2로 증가
+          echo "Increasing capacity to 2 for deployment..."
           aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name $ASG_NAME \
-            --min-size 2 \
-            --max-size 2 \
+            --min-size 1 \
+            --max-size 3 \
             --desired-capacity 2
           
           # 새 인스턴스가 생성되고 healthy 상태가 될 때까지 대기
           echo "Waiting for new instance to become healthy..."
           while true; do
-            INSTANCES=$(aws autoscaling describe-auto-scaling-groups \
-              --auto-scaling-group-name $ASG_NAME \
-              --query 'AutoScalingGroups[0].Instances[*].[InstanceId,LifecycleState]' \
-              --output text)
-            
-            NEW_INSTANCE_COUNT=$(echo "$INSTANCES" | grep "InService" | wc -l)
-            echo "Instances in service: $NEW_INSTANCE_COUNT"
-            
-            if [ "$NEW_INSTANCE_COUNT" -eq 2 ]; then
-              echo "Both instances are now in service"
-              break
-            fi
-            
-            sleep 30
-          done
-          
-          # ALB 타겟 그룹에서 새 인스턴스의 상태 확인
-          echo "Checking health status in target group..."
-          while true; do
             HEALTHY_COUNT=$(aws elbv2 describe-target-health \
               --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
-              --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
-              --output text | wc -w)
+              --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
+              --output text)
             
-            echo "Healthy instances in target group: $HEALTHY_COUNT"
+            echo "Healthy instances count: $HEALTHY_COUNT"
             
             if [ "$HEALTHY_COUNT" -eq 2 ]; then
-              echo "Both instances are healthy in target group"
+              echo "Both instances are healthy"
               break
             fi
             
             sleep 30
           done
           
-          # 이전 인스턴스 제거
-          echo "Terminating old instance: $CURRENT_INSTANCE_ID"
-          aws autoscaling terminate-instance-in-auto-scaling-group \
-            --instance-id $CURRENT_INSTANCE_ID \
-            --no-should-decrement-desired-capacity
+          # 이전 인스턴스 ID 찾기
+          OLD_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-name $ASG_NAME \
+            --query 'AutoScalingGroups[0].Instances[?not_null(LaunchTemplate.Version) && LaunchTemplate.Version!=`'"$LATEST_VERSION"'`].InstanceId | [0]' \
+            --output text)
           
-          # 잠시 대기하여 인스턴스 종료 확인
+          # 이전 인스턴스 종료
+          if [ ! -z "$OLD_INSTANCE_ID" ] && [ "$OLD_INSTANCE_ID" != "None" ]; then
+            echo "Terminating old instance: $OLD_INSTANCE_ID"
+            aws autoscaling terminate-instance-in-auto-scaling-group \
+              --instance-id $OLD_INSTANCE_ID \
+              --no-should-decrement-desired-capacity
+          fi
+          
+          # 잠시 대기하여 종료 확인
           echo "Waiting for instance termination..."
           sleep 30
           
-          # ASG 설정을 원래대로 복구
-          echo "Restoring original ASG settings..."
+          # ASG capacity를 1로 복구
+          echo "Restoring capacity to 1..."
           aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name $ASG_NAME \
             --min-size 1 \
