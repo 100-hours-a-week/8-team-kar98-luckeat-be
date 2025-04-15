@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: 8-team-kar98-luckeat-be
 
@@ -47,21 +47,49 @@ jobs:
           # UserData 스크립트 생성
           USERDATA=$(cat << 'EOF' | base64 -w 0
           #!/bin/bash
-          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-          docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
-          docker stop $(docker ps -aq) || true
-          docker rm $(docker ps -aq) || true
-          docker run -d \
-            -p 8080:8080 \
-            --name luckeat \
-            --restart always \
-            ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
+          # 도커 서비스 시작
+          sudo systemctl start docker
+          sudo systemctl enable docker
+
+          # 도커 권한 설정
+          sudo usermod -aG docker ubuntu
+
+          # 애플리케이션 디렉토리 생성
+          mkdir -p /home/ubuntu/config
+
+          # SSM에서 application.yml 가져오기
+          aws ssm get-parameter \
+            --name "/config/application.yml" \
+            --with-decryption \
+            --region ap-northeast-2 \
+            --query "Parameter.Value" \
+            --output text > /home/ubuntu/config/application.yml
+
+          # ECR 로그인
+          aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+          # docker-compose.yml 생성
+          cat << 'COMPOSE' > /home/ubuntu/docker-compose.yml
+          version: '3'
+          services:
+            app:
+              image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
+              ports:
+                - "8080:8080"
+              volumes:
+                - /home/ubuntu/config:/config
+              restart: always
+          COMPOSE
+
+          # 애플리케이션 시작
+          cd /home/ubuntu
+          docker-compose up -d
           EOF
           )
 
           # 새로운 시작 템플릿 버전 생성
           aws ec2 create-launch-template-version \
-            --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} \
+            --launch-template-id "${{ secrets.LAUNCH_TEMPLATE_ID }}" \
             --version-description "New version with ${{ github.sha }}" \
             --source-version 1 \
             --launch-template-data "{
@@ -70,7 +98,7 @@ jobs:
 
           # 최신 버전 번호 가져오기
           LATEST_VERSION=$(aws ec2 describe-launch-template-versions \
-            --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} \
+            --launch-template-id "${{ secrets.LAUNCH_TEMPLATE_ID }}" \
             --query 'LaunchTemplateVersions[0].VersionNumber' \
             --output text)
 
