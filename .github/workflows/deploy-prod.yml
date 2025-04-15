@@ -108,7 +108,11 @@ jobs:
           echo "Terminating old instance: $CURRENT_INSTANCE_ID"
           aws autoscaling terminate-instance-in-auto-scaling-group \
             --instance-id $CURRENT_INSTANCE_ID \
-            --should-decrement-desired-capacity
+            --no-should-decrement-desired-capacity
+          
+          # 잠시 대기하여 인스턴스 종료 확인
+          echo "Waiting for instance termination..."
+          sleep 30
           
           # ASG 설정을 원래대로 복구
           echo "Restoring original ASG settings..."
