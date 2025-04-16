@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - test-deploy
   workflow_dispatch:  # 수동 실행 가능
 
 env:
@@ -16,16 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: 8-team-kar98-luckeat-be
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -41,80 +42,119 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
 
-      - name: Deploy with zero downtime
+      - name: Deploy with zero-downtime using ASG capacity adjustment
         run: |
-          # 현재 ASG 정보 가져오기
-          echo "Fetching current ASG information..."
-          CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-name $ASG_NAME \
-            --query 'AutoScalingGroups[0].DesiredCapacity' \
+          echo "Starting zero-downtime deployment by adjusting ASG capacity..."
+          
+          # 1. 기존 healthy 인스턴스 ID 저장
+          OLD_INSTANCE_ID=$(aws elbv2 describe-target-health \
+            --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+            --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
             --output text)
           
-          CURRENT_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-name $ASG_NAME \
-            --query 'AutoScalingGroups[0].Instances[0].InstanceId' \
-            --output text)
+          if [ -z "$OLD_INSTANCE_ID" ]; then
+            echo "No healthy instances found. Deployment might be risky."
+            exit 1
+          fi
           
-          echo "Current capacity: $CURRENT_CAPACITY"
-          echo "Current instance: $CURRENT_INSTANCE_ID"
+          echo "Current healthy instance ID: $OLD_INSTANCE_ID"
           
-          # ASG capacity 2로 증가
-          echo "Increasing ASG capacity to 2..."
-          aws autoscaling update-auto-scaling-group \
-            --auto-scaling-group-name $ASG_NAME \
-            --min-size 2 \
-            --max-size 2 \
-            --desired-capacity 2
-          
-          # 새 인스턴스가 생성되고 healthy 상태가 될 때까지 대기
-          echo "Waiting for new instance to become healthy..."
-          while true; do
-            INSTANCES=$(aws autoscaling describe-auto-scaling-groups \
-              --auto-scaling-group-name $ASG_NAME \
-              --query 'AutoScalingGroups[0].Instances[*].[InstanceId,LifecycleState]' \
-              --output text)
-            
-            NEW_INSTANCE_COUNT=$(echo "$INSTANCES" | grep "InService" | wc -l)
-            echo "Instances in service: $NEW_INSTANCE_COUNT"
-            
-            if [ "$NEW_INSTANCE_COUNT" -eq 2 ]; then
-              echo "Both instances are now in service"
-              break
-            fi
-            
-            sleep 30
-          done
-          
-          # ALB 타겟 그룹에서 새 인스턴스의 상태 확인
-          echo "Checking health status in target group..."
-          while true; do
-            HEALTHY_COUNT=$(aws elbv2 describe-target-health \
-              --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
-              --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
-              --output text | wc -w)
-            
-            echo "Healthy instances in target group: $HEALTHY_COUNT"
-            
-            if [ "$HEALTHY_COUNT" -eq 2 ]; then
-              echo "Both instances are healthy in target group"
-              break
-            fi
-            
-            sleep 30
-          done
-          
-          # 이전 인스턴스 제거
-          echo "Terminating old instance: $CURRENT_INSTANCE_ID"
-          aws autoscaling terminate-instance-in-auto-scaling-group \
-            --instance-id $CURRENT_INSTANCE_ID \
-            --should-decrement-desired-capacity
-          
-          # ASG 설정을 원래대로 복구
-          echo "Restoring original ASG settings..."
+          # 2. ASG 용량 증가하여 새 인스턴스 시작
           aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name $ASG_NAME \
             --min-size 1 \
             --max-size 3 \
-            --desired-capacity 1
+            --desired-capacity 2
           
-          echo "Deployment completed successfully" 
+          echo "Increased ASG capacity to 2"
+          
+          # 3. 배포 상태 모니터링
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+          BOTH_HEALTHY=false
+          NEW_INSTANCE_ID=""
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            # 타겟 그룹의 모든 인스턴스 상태 확인
+            TARGET_HEALTH=$(aws elbv2 describe-target-health \
+              --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+              --output json)
+            
+            # 새로운 인스턴스 찾기 (기존 인스턴스 ID와 다른 것)
+            NEW_INSTANCE_ID=$(echo "$TARGET_HEALTH" | jq -r ".TargetHealthDescriptions[].Target.Id" | grep -v "$OLD_INSTANCE_ID" | head -n1)
+            
+            if [ -n "$NEW_INSTANCE_ID" ]; then
+              # 각 인스턴스의 상태 확인
+              OLD_INSTANCE_STATUS=$(echo "$TARGET_HEALTH" | jq -r --arg id "$OLD_INSTANCE_ID" '.TargetHealthDescriptions[] | select(.Target.Id==$id) | .TargetHealth.State')
+              NEW_INSTANCE_STATUS=$(echo "$TARGET_HEALTH" | jq -r --arg id "$NEW_INSTANCE_ID" '.TargetHealthDescriptions[] | select(.Target.Id==$id) | .TargetHealth.State')
+              
+              echo "Old instance ($OLD_INSTANCE_ID) status: $OLD_INSTANCE_STATUS"
+              echo "New instance ($NEW_INSTANCE_ID) status: $NEW_INSTANCE_STATUS"
+              
+              # 4. 두 인스턴스 모두 healthy 확인
+              if [ "$OLD_INSTANCE_STATUS" = "healthy" ] && [ "$NEW_INSTANCE_STATUS" = "healthy" ]; then
+                echo "Both instances are healthy! Starting graceful termination of old instance..."
+                BOTH_HEALTHY=true
+                
+                # 5. 기존 인스턴스만 draining 상태로 변경
+                echo "Deregistering old instance: $OLD_INSTANCE_ID"
+                aws elbv2 deregister-targets \
+                  --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                  --targets Id=$OLD_INSTANCE_ID
+                
+                # 새 인스턴스가 정상적으로 트래픽을 처리하는지 확인
+                echo "Verifying new instance is handling traffic..."
+                sleep 30
+                
+                NEW_INSTANCE_CHECK=$(aws elbv2 describe-target-health \
+                  --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                  --targets Id=$NEW_INSTANCE_ID \
+                  --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+                  --output text)
+                
+                if [ "$NEW_INSTANCE_CHECK" != "healthy" ]; then
+                  echo "Warning: New instance is not healthy after old instance deregistration!"
+                  exit 1
+                fi
+                
+                break
+              fi
+            fi
+            
+            echo "Waiting for both instances to become healthy... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            ATTEMPT=$((ATTEMPT + 1))
+            sleep 30
+          done
+          
+          if [ "$BOTH_HEALTHY" = true ]; then
+            # 기존 인스턴스의 연결 종료를 위한 대기
+            echo "Waiting for old instance to complete draining..."
+            sleep 90
+            
+            # 기존 인스턴스 종료
+            echo "Terminating old instance: $OLD_INSTANCE_ID"
+            aws autoscaling terminate-instance-in-auto-scaling-group \
+              --instance-id $OLD_INSTANCE_ID \
+              --should-decrement-desired-capacity
+            
+            # 새로운 인스턴스를 보호 설정하여 종료되지 않도록 함
+            echo "Protecting new instance from scale in: $NEW_INSTANCE_ID"
+            aws autoscaling set-instance-protection \
+              --auto-scaling-group-name $ASG_NAME \
+              --instance-ids $NEW_INSTANCE_ID \
+              --protected-from-scale-in
+            
+            echo "Deployment completed successfully!"
+            exit 0
+          else
+            echo "Deployment failed: Timeout waiting for both instances to become healthy"
+            # ASG를 원래 크기로 복구
+            aws autoscaling update-auto-scaling-group \
+              --auto-scaling-group-name $ASG_NAME \
+              --min-size 1 \
+              --max-size 3 \
+              --desired-capacity 1
+            
+            echo "ASG capacity restored to 1"
+            exit 1
+          fi 
