@@ -8,36 +8,24 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: luckeat-prod
+  ASG_NAME: luckeat-asg
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: 8-team-kar98-luckeat-be
 
-      - name: Set environment variables
-        run: |
-            echo "ENV_TYPE=prod" >> $GITHUB_ENV
-            echo "EC2_HOST=${{ secrets.PROD_EC2_HOST }}" >> $GITHUB_ENV
-            echo "APPLICATION_YML=${{ secrets.PROD_APPLICATION_YML }}" >> $GITHUB_ENV
-            echo "SENTRY_ENVIRONMENT=production" >> $GITHUB_ENV
-            echo "ECR_REPOSITORY=luckeat-prod" >> $GITHUB_ENV
-
-
-      - name: Install Docker Compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -53,30 +41,119 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.PROD_EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # 디스크 공간 정리
-            docker system prune -a -f
-            docker volume prune -f
-
-            # Pull latest images
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-            docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}
+      - name: Deploy with zero-downtime using ASG capacity adjustment
+        run: |
+          echo "Starting zero-downtime deployment by adjusting ASG capacity..."
+          
+          # 1. 기존 healthy 인스턴스 ID 저장
+          OLD_INSTANCE_ID=$(aws elbv2 describe-target-health \
+            --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+            --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
+            --output text)
+          
+          if [ -z "$OLD_INSTANCE_ID" ]; then
+            echo "No healthy instances found. Deployment might be risky."
+            exit 1
+          fi
+          
+          echo "Current healthy instance ID: $OLD_INSTANCE_ID"
+          
+          # 2. ASG 용량 증가하여 새 인스턴스 시작
+          aws autoscaling update-auto-scaling-group \
+            --auto-scaling-group-name $ASG_NAME \
+            --min-size 1 \
+            --max-size 3 \
+            --desired-capacity 2
+          
+          echo "Increased ASG capacity to 2"
+          
+          # 3. 배포 상태 모니터링
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+          BOTH_HEALTHY=false
+          NEW_INSTANCE_ID=""
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            # 타겟 그룹의 모든 인스턴스 상태 확인
+            TARGET_HEALTH=$(aws elbv2 describe-target-health \
+              --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+              --output json)
             
-            # Update docker-compose.yml with new image tags
-            sed -i "s|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-.*|image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:backend-${{ github.sha }}|g" docker-compose.yml
-
-
-            cd /home/ubuntu
-            echo "👉 ${{ env.ENV_TYPE }} 환경 application.yml 설정"
-            mkdir -p config
-            echo "${{ env.APPLICATION_YML }}" | base64 --decode > config/application.yml
-            echo "👉 ${{ env.ENV_TYPE }} 환경 deploy.sh 스크립트 실행 시작"
-            export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
-            bash docker_deploy.sh
-
+            # 새로운 인스턴스 찾기 (기존 인스턴스 ID와 다른 것)
+            NEW_INSTANCE_ID=$(echo "$TARGET_HEALTH" | jq -r ".TargetHealthDescriptions[].Target.Id" | grep -v "$OLD_INSTANCE_ID" | head -n1)
+            
+            if [ -n "$NEW_INSTANCE_ID" ]; then
+              # 각 인스턴스의 상태 확인
+              OLD_INSTANCE_STATUS=$(echo "$TARGET_HEALTH" | jq -r --arg id "$OLD_INSTANCE_ID" '.TargetHealthDescriptions[] | select(.Target.Id==$id) | .TargetHealth.State')
+              NEW_INSTANCE_STATUS=$(echo "$TARGET_HEALTH" | jq -r --arg id "$NEW_INSTANCE_ID" '.TargetHealthDescriptions[] | select(.Target.Id==$id) | .TargetHealth.State')
+              
+              echo "Old instance ($OLD_INSTANCE_ID) status: $OLD_INSTANCE_STATUS"
+              echo "New instance ($NEW_INSTANCE_ID) status: $NEW_INSTANCE_STATUS"
+              
+              # 4. 두 인스턴스 모두 healthy 확인
+              if [ "$OLD_INSTANCE_STATUS" = "healthy" ] && [ "$NEW_INSTANCE_STATUS" = "healthy" ]; then
+                echo "Both instances are healthy! Starting graceful termination of old instance..."
+                BOTH_HEALTHY=true
+                
+                # 5. 기존 인스턴스만 draining 상태로 변경
+                echo "Deregistering old instance: $OLD_INSTANCE_ID"
+                aws elbv2 deregister-targets \
+                  --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                  --targets Id=$OLD_INSTANCE_ID
+                
+                # 새 인스턴스가 정상적으로 트래픽을 처리하는지 확인
+                echo "Verifying new instance is handling traffic..."
+                sleep 30
+                
+                NEW_INSTANCE_CHECK=$(aws elbv2 describe-target-health \
+                  --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                  --targets Id=$NEW_INSTANCE_ID \
+                  --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+                  --output text)
+                
+                if [ "$NEW_INSTANCE_CHECK" != "healthy" ]; then
+                  echo "Warning: New instance is not healthy after old instance deregistration!"
+                  exit 1
+                fi
+                
+                break
+              fi
+            fi
+            
+            echo "Waiting for both instances to become healthy... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            ATTEMPT=$((ATTEMPT + 1))
+            sleep 30
+          done
+          
+          if [ "$BOTH_HEALTHY" = true ]; then
+            # 기존 인스턴스의 연결 종료를 위한 대기
+            echo "Waiting for old instance to complete draining..."
+            sleep 90
+            
+            # 기존 인스턴스 종료
+            echo "Terminating old instance: $OLD_INSTANCE_ID"
+            aws autoscaling terminate-instance-in-auto-scaling-group \
+              --instance-id $OLD_INSTANCE_ID \
+              --should-decrement-desired-capacity
+            
+            # 새로운 인스턴스를 보호 설정하여 종료되지 않도록 함
+            echo "Protecting new instance from scale in: $NEW_INSTANCE_ID"
+            aws autoscaling set-instance-protection \
+              --auto-scaling-group-name $ASG_NAME \
+              --instance-ids $NEW_INSTANCE_ID \
+              --protected-from-scale-in
+            
+            echo "Deployment completed successfully!"
+            exit 0
+          else
+            echo "Deployment failed: Timeout waiting for both instances to become healthy"
+            # ASG를 원래 크기로 복구
+            aws autoscaling update-auto-scaling-group \
+              --auto-scaling-group-name $ASG_NAME \
+              --min-size 1 \
+              --max-size 3 \
+              --desired-capacity 1
+            
+            echo "ASG capacity restored to 1"
+            exit 1
+          fi 
