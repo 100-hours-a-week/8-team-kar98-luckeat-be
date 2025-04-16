@@ -22,15 +22,35 @@ jobs:
           path: 8-team-kar98-luckeat-be
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Store current ASG state
+        id: store-asg
+        run: |
+          # 현재 ASG 상태 저장
+          echo "Storing current ASG state..."
+          
+          # 현재 실행 중인 인스턴스의 이미지 ID 저장
+          CURRENT_IMAGE_ID=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-name $ASG_NAME \
+            --query 'AutoScalingGroups[0].Instances[0].ImageId' \
+            --output text)
+          echo "CURRENT_IMAGE_ID=$CURRENT_IMAGE_ID" >> $GITHUB_ENV
+          
+          # 현재 실행 중인 인스턴스의 시작 템플릿 버전 저장
+          CURRENT_TEMPLATE_VERSION=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-name $ASG_NAME \
+            --query 'AutoScalingGroups[0].Instances[0].LaunchTemplate.Version' \
+            --output text)
+          echo "CURRENT_TEMPLATE_VERSION=$CURRENT_TEMPLATE_VERSION" >> $GITHUB_ENV
 
       - name: Build and push Docker images
         env:
@@ -42,134 +62,96 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
 
-      - name: Update Launch Template
+      - name: Deploy with rollback support
+        id: deploy
         run: |
-          # UserData 스크립트 생성
-          USERDATA=$(cat << 'EOF' | base64 -w 0
-          #!/bin/bash
-          # 도커 서비스 시작
-          sudo systemctl start docker
-          sudo systemctl enable docker
-
-          # 도커 권한 설정
-          sudo usermod -aG docker ubuntu
-
-          # 애플리케이션 디렉토리 생성
-          mkdir -p /home/ubuntu/config
-
-          # SSM에서 application.yml 가져오기
-          aws ssm get-parameter \
-            --name "/config/application.yml" \
-            --with-decryption \
-            --region ap-northeast-2 \
-            --query "Parameter.Value" \
-            --output text > /home/ubuntu/config/application.yml
-
-          # ECR 로그인
-          aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
-          # docker-compose.yml 생성
-          cat << 'COMPOSE' > /home/ubuntu/docker-compose.yml
-          version: '3'
-          services:
-            app:
-              image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:backend-${GITHUB_SHA}
-              ports:
-                - "8080:8080"
-              volumes:
-                - /home/ubuntu/config:/config
-              restart: always
-          COMPOSE
-
-          # 애플리케이션 시작
-          cd /home/ubuntu
-          docker-compose up -d
-          EOF
-          )
-
-          # 새로운 시작 템플릿 버전 생성
-          aws ec2 create-launch-template-version \
-            --launch-template-id "${{ secrets.LAUNCH_TEMPLATE_ID }}" \
-            --version-description "New version with ${{ github.sha }}" \
-            --source-version 1 \
-            --launch-template-data "{
-              \"UserData\": \"$USERDATA\"
-            }"
-
-          # 최신 버전 번호 가져오기
-          LATEST_VERSION=$(aws ec2 describe-launch-template-versions \
-            --launch-template-id "${{ secrets.LAUNCH_TEMPLATE_ID }}" \
-            --query 'LaunchTemplateVersions[0].VersionNumber' \
-            --output text)
-
-          # ASG 업데이트
-          aws autoscaling update-auto-scaling-group \
-            --auto-scaling-group-name $ASG_NAME \
-            --launch-template "LaunchTemplateId=${{ secrets.LAUNCH_TEMPLATE_ID }},Version=$LATEST_VERSION"
-
-      - name: Deploy with zero downtime
-        run: |
-          echo "Starting zero-downtime deployment..."
+          echo "Starting deployment with rollback support..."
           
-          # 현재 ASG 상태 확인
-          echo "Checking current ASG status..."
-          CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
+          # 인스턴스 리프레시 시작
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
             --auto-scaling-group-name $ASG_NAME \
-            --query 'AutoScalingGroups[0].DesiredCapacity' \
+            --preferences '{
+              "InstanceWarmup": 300,
+              "MinHealthyPercentage": 50,
+              "CheckpointPercentages": [25, 50, 75, 100],
+              "CheckpointDelay": 60
+            }' \
+            --strategy Rolling \
+            --query 'InstanceRefreshId' \
             --output text)
           
-          echo "Current capacity: $CURRENT_CAPACITY"
+          echo "Instance refresh ID: $REFRESH_ID"
           
-          # ASG capacity를 2로 증가
-          echo "Increasing capacity to 2 for deployment..."
-          aws autoscaling update-auto-scaling-group \
-            --auto-scaling-group-name $ASG_NAME \
-            --min-size 1 \
-            --max-size 3 \
-            --desired-capacity 2
+          # 배포 상태 모니터링
+          MAX_ATTEMPTS=30  # 15분 타임아웃 (30 * 30초)
+          ATTEMPT=0
           
-          # 새 인스턴스가 생성되고 healthy 상태가 될 때까지 대기
-          echo "Waiting for new instance to become healthy..."
-          while true; do
-            HEALTHY_COUNT=$(aws elbv2 describe-target-health \
-              --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
-              --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name $ASG_NAME \
+              --instance-refresh-ids $REFRESH_ID \
+              --query 'InstanceRefreshes[0].Status' \
               --output text)
             
-            echo "Healthy instances count: $HEALTHY_COUNT"
+            echo "Deployment status: $STATUS (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
             
-            if [ "$HEALTHY_COUNT" -eq 2 ]; then
-              echo "Both instances are healthy"
-              break
+            if [ "$STATUS" = "Successful" ]; then
+              echo "Deployment completed successfully!"
+              
+              # 배포 성공 후 desired capacity를 1로 변경
+              echo "Reducing desired capacity to 1..."
+              aws autoscaling update-auto-scaling-group \
+                --auto-scaling-group-name $ASG_NAME \
+                --min-size 1 \
+                --max-size 3 \
+                --desired-capacity 1
+              
+              echo "ASG capacity updated successfully"
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Deployment failed. Initiating rollback..."
+              exit 1
             fi
             
+            ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
           
-          # 이전 인스턴스 ID 찾기
-          OLD_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups \
+          echo "Deployment timed out. Initiating rollback..."
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && steps.deploy.outcome == 'failure'
+        run: |
+          echo "Starting rollback process..."
+          
+          # 이전 버전으로 인스턴스 리프레시 시작
+          aws autoscaling start-instance-refresh \
             --auto-scaling-group-name $ASG_NAME \
-            --query 'AutoScalingGroups[0].Instances[?not_null(LaunchTemplate.Version) && LaunchTemplate.Version!=`'"$LATEST_VERSION"'`].InstanceId | [0]' \
-            --output text)
+            --preferences '{
+              "InstanceWarmup": 300,
+              "MinHealthyPercentage": 50
+            }' \
+            --strategy Rolling
           
-          # 이전 인스턴스 종료
-          if [ ! -z "$OLD_INSTANCE_ID" ] && [ "$OLD_INSTANCE_ID" != "None" ]; then
-            echo "Terminating old instance: $OLD_INSTANCE_ID"
-            aws autoscaling terminate-instance-in-auto-scaling-group \
-              --instance-id $OLD_INSTANCE_ID \
-              --no-should-decrement-desired-capacity
-          fi
+          echo "Rollback initiated. Monitoring rollback status..."
           
-          # 잠시 대기하여 종료 확인
-          echo "Waiting for instance termination..."
-          sleep 30
-          
-          # ASG capacity를 1로 복구
-          echo "Restoring capacity to 1..."
-          aws autoscaling update-auto-scaling-group \
-            --auto-scaling-group-name $ASG_NAME \
-            --min-size 1 \
-            --max-size 3 \
-            --desired-capacity 1
-          
-          echo "Deployment completed successfully" 
+          # 롤백 상태 모니터링
+          while true; do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name $ASG_NAME \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+            
+            echo "Rollback status: $STATUS"
+            
+            if [ "$STATUS" = "Successful" ]; then
+              echo "Rollback completed successfully"
+              break
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Rollback failed. Manual intervention required!"
+              exit 1
+            fi
+            
+            sleep 30
+          done 
