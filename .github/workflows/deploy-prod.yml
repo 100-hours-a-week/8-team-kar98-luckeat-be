@@ -72,6 +72,7 @@ jobs:
           MAX_ATTEMPTS=20
           ATTEMPT=0
           BOTH_HEALTHY=false
+          NEW_INSTANCE_ID=""
           
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             # 타겟 그룹의 모든 인스턴스 상태 확인
@@ -130,15 +131,20 @@ jobs:
             echo "Waiting for old instance to complete draining..."
             sleep 90
             
-            # ASG를 원래 크기로 복구
-            aws autoscaling update-auto-scaling-group \
+            # 기존 인스턴스 종료
+            echo "Terminating old instance: $OLD_INSTANCE_ID"
+            aws autoscaling terminate-instance-in-auto-scaling-group \
+              --instance-id $OLD_INSTANCE_ID \
+              --should-decrement-desired-capacity
+            
+            # 새로운 인스턴스를 보호 설정하여 종료되지 않도록 함
+            echo "Protecting new instance from scale in: $NEW_INSTANCE_ID"
+            aws autoscaling set-instance-protection \
               --auto-scaling-group-name $ASG_NAME \
-              --min-size 1 \
-              --max-size 3 \
-              --desired-capacity 1
+              --instance-ids $NEW_INSTANCE_ID \
+              --protected-from-scale-in
             
             echo "Deployment completed successfully!"
-            echo "ASG capacity restored to 1"
             exit 0
           else
             echo "Deployment failed: Timeout waiting for both instances to become healthy"
