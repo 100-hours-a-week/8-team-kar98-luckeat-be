@@ -95,10 +95,26 @@ jobs:
                 echo "Both instances are healthy! Starting graceful termination of old instance..."
                 BOTH_HEALTHY=true
                 
-                # 5. 기존 인스턴스를 draining 상태로 변경
+                # 5. 기존 인스턴스만 draining 상태로 변경
+                echo "Deregistering old instance: $OLD_INSTANCE_ID"
                 aws elbv2 deregister-targets \
                   --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
                   --targets Id=$OLD_INSTANCE_ID
+                
+                # 새 인스턴스가 정상적으로 트래픽을 처리하는지 확인
+                echo "Verifying new instance is handling traffic..."
+                sleep 30
+                
+                NEW_INSTANCE_CHECK=$(aws elbv2 describe-target-health \
+                  --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                  --targets Id=$NEW_INSTANCE_ID \
+                  --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+                  --output text)
+                
+                if [ "$NEW_INSTANCE_CHECK" != "healthy" ]; then
+                  echo "Warning: New instance is not healthy after old instance deregistration!"
+                  exit 1
+                fi
                 
                 break
               fi
