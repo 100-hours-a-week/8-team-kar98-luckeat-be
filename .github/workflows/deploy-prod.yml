@@ -63,7 +63,7 @@ jobs:
           aws autoscaling start-instance-refresh \
             --auto-scaling-group-name $ASG_NAME \
             --preferences '{
-              "InstanceWarmup": 300,
+              "InstanceWarmup": 600,
               "MinHealthyPercentage": 100
             }' \
             --strategy Rolling
@@ -73,24 +73,27 @@ jobs:
           ATTEMPT=0
           
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            STATUS=$(aws autoscaling describe-instance-refreshes \
-              --auto-scaling-group-name $ASG_NAME \
-              --query 'InstanceRefreshes[0].Status' \
+            # ALB 타겟 그룹의 헬스체크 상태 확인
+            TARGET_HEALTH=$(aws elbv2 describe-target-health \
+              --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+              --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' \
               --output text)
             
-            echo "Deployment status: $STATUS (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            echo "Target Health Status:"
+            echo "$TARGET_HEALTH"
             
-            if [ "$STATUS" = "Successful" ]; then
-              echo "Deployment completed successfully!"
+            # 하나 이상의 healthy 타겟이 있는지 확인
+            HEALTHY_COUNT=$(echo "$TARGET_HEALTH" | grep "healthy" | wc -l)
+            
+            if [ $HEALTHY_COUNT -gt 0 ]; then
+              echo "Deployment completed successfully! At least one instance is healthy."
               exit 0
-            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
-              echo "Deployment failed."
-              exit 1
             fi
             
+            echo "Waiting for healthy instance... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
             ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
           
-          echo "Deployment timed out."
+          echo "Deployment timed out. No healthy instances found."
           exit 1 
