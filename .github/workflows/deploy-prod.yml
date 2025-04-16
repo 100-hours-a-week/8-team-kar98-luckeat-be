@@ -46,6 +46,14 @@ jobs:
         run: |
           echo "Starting zero-downtime deployment by adjusting ASG capacity..."
           
+          # 기존 인스턴스 ID 저장
+          OLD_INSTANCE_ID=$(aws elbv2 describe-target-health \
+            --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+            --query 'TargetHealthDescriptions[0].Target.Id' \
+            --output text)
+          
+          echo "Current instance ID: $OLD_INSTANCE_ID"
+          
           # ASG의 현재 용량을 2로 증가
           aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name $ASG_NAME \
@@ -70,25 +78,35 @@ jobs:
             echo "Current target health status:"
             echo "$TARGET_HEALTH"
             
-            # healthy 상태의 인스턴스 수 확인
-            HEALTHY_COUNT=$(echo "$TARGET_HEALTH" | grep "healthy" | wc -l)
+            # 새로운 인스턴스 찾기 (기존 인스턴스 ID와 다른 인스턴스)
+            NEW_INSTANCE_ID=$(echo "$TARGET_HEALTH" | grep -v "$OLD_INSTANCE_ID" | awk '{print $1}')
+            NEW_INSTANCE_STATUS=$(echo "$TARGET_HEALTH" | grep "$NEW_INSTANCE_ID" | awk '{print $2}')
             
-            if [ $HEALTHY_COUNT -ge 2 ]; then
-              echo "Both instances are healthy. Proceeding with deployment completion."
+            if [ "$NEW_INSTANCE_STATUS" = "healthy" ]; then
+              echo "New instance $NEW_INSTANCE_ID is healthy. Starting draining of old instance..."
               NEW_INSTANCE_HEALTHY=true
+              
+              # 기존 인스턴스를 draining 상태로 변경
+              aws elbv2 deregister-targets \
+                --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
+                --targets Id=$OLD_INSTANCE_ID
+              
+              echo "Old instance $OLD_INSTANCE_ID is now draining"
               break
-            elif [ $HEALTHY_COUNT -eq 0 ]; then
-              echo "Warning: No healthy instances found!"
             fi
             
-            echo "Waiting for instances to become healthy... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
-            echo "Current healthy instance count: $HEALTHY_COUNT"
+            echo "Waiting for new instance to become healthy... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            echo "New instance status: $NEW_INSTANCE_STATUS"
             
             ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
           
           if [ "$NEW_INSTANCE_HEALTHY" = true ]; then
+            # 기존 인스턴스가 완전히 draining될 때까지 대기
+            echo "Waiting for old instance to complete draining..."
+            sleep 60
+            
             # ASG를 원래 크기로 복구
             aws autoscaling update-auto-scaling-group \
               --auto-scaling-group-name $ASG_NAME \
@@ -100,7 +118,7 @@ jobs:
             echo "ASG capacity restored to 1"
             exit 0
           else
-            echo "Deployment failed: Timeout waiting for instances to become healthy"
+            echo "Deployment failed: Timeout waiting for new instance to become healthy"
             # ASG를 원래 크기로 복구
             aws autoscaling update-auto-scaling-group \
               --auto-scaling-group-name $ASG_NAME \
