@@ -42,37 +42,23 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }} .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-${{ github.sha }}
 
-      - name: Cancel existing instance refresh
+      - name: Deploy with zero-downtime using ASG capacity adjustment
         run: |
-          # 진행 중인 인스턴스 리프레시가 있다면 취소
-          CURRENT_REFRESH=$(aws autoscaling describe-instance-refreshes \
-            --auto-scaling-group-name $ASG_NAME \
-            --query 'InstanceRefreshes[?Status==`InProgress`].InstanceRefreshId' \
-            --output text)
+          echo "Starting zero-downtime deployment by adjusting ASG capacity..."
           
-          if [ ! -z "$CURRENT_REFRESH" ] && [ "$CURRENT_REFRESH" != "None" ]; then
-            echo "Cancelling existing instance refresh: $CURRENT_REFRESH"
-            aws autoscaling cancel-instance-refresh \
-              --auto-scaling-group-name $ASG_NAME
-            sleep 30  # 취소가 완료될 때까지 대기
-          fi
-
-      - name: Start instance refresh
-        run: |
-          echo "Starting instance refresh..."
-          aws autoscaling start-instance-refresh \
+          # ASG의 현재 용량을 2로 증가
+          aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name $ASG_NAME \
-            --preferences '{
-              "InstanceWarmup": 600,
-              "MinHealthyPercentage": 100
-            }' \
-            --strategy Rolling
-
+            --min-size 1 \
+            --max-size 3 \
+            --desired-capacity 2
+          
+          echo "Increased ASG capacity to 2"
+          
           # 배포 상태 모니터링
           MAX_ATTEMPTS=20  # 10분 타임아웃 (20 * 30초)
           ATTEMPT=0
           NEW_INSTANCE_HEALTHY=false
-          OLD_INSTANCE_DRAINING=false
           
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             # ALB 타겟 그룹의 모든 타겟 상태 확인
@@ -81,40 +67,47 @@ jobs:
               --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' \
               --output text)
             
-            echo "Target Health Status:"
+            echo "Current target health status:"
             echo "$TARGET_HEALTH"
             
-            # 새 인스턴스 healthy 확인
+            # healthy 상태의 인스턴스 수 확인
             HEALTHY_COUNT=$(echo "$TARGET_HEALTH" | grep "healthy" | wc -l)
-            if [ $HEALTHY_COUNT -gt 0 ]; then
+            
+            if [ $HEALTHY_COUNT -ge 2 ]; then
+              echo "Both instances are healthy. Proceeding with deployment completion."
               NEW_INSTANCE_HEALTHY=true
-              echo "New instance is healthy"
+              break
+            elif [ $HEALTHY_COUNT -eq 0 ]; then
+              echo "Warning: No healthy instances found!"
             fi
             
-            # 기존 인스턴스 draining 확인
-            DRAINING_COUNT=$(echo "$TARGET_HEALTH" | grep "draining" | wc -l)
-            if [ $DRAINING_COUNT -gt 0 ]; then
-              OLD_INSTANCE_DRAINING=true
-              echo "Old instance is draining"
-            fi
-            
-            # 새 인스턴스가 healthy이고 기존 인스턴스가 draining 상태일 때 성공
-            if [ "$NEW_INSTANCE_HEALTHY" = true ] && [ "$OLD_INSTANCE_DRAINING" = true ]; then
-              echo "Deployment completed successfully!"
-              echo "- New instance is healthy"
-              echo "- Old instance is draining"
-              exit 0
-            fi
-            
-            echo "Waiting for deployment to complete... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
-            echo "- New instance healthy: $NEW_INSTANCE_HEALTHY"
-            echo "- Old instance draining: $OLD_INSTANCE_DRAINING"
+            echo "Waiting for instances to become healthy... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            echo "Current healthy instance count: $HEALTHY_COUNT"
             
             ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
           
-          echo "Deployment timed out. Current status:"
-          echo "- New instance healthy: $NEW_INSTANCE_HEALTHY"
-          echo "- Old instance draining: $OLD_INSTANCE_DRAINING"
-          exit 1 
+          if [ "$NEW_INSTANCE_HEALTHY" = true ]; then
+            # ASG를 원래 크기로 복구
+            aws autoscaling update-auto-scaling-group \
+              --auto-scaling-group-name $ASG_NAME \
+              --min-size 1 \
+              --max-size 3 \
+              --desired-capacity 1
+            
+            echo "Deployment completed successfully!"
+            echo "ASG capacity restored to 1"
+            exit 0
+          else
+            echo "Deployment failed: Timeout waiting for instances to become healthy"
+            # ASG를 원래 크기로 복구
+            aws autoscaling update-auto-scaling-group \
+              --auto-scaling-group-name $ASG_NAME \
+              --min-size 1 \
+              --max-size 3 \
+              --desired-capacity 1
+            
+            echo "ASG capacity restored to 1"
+            exit 1
+          fi 
