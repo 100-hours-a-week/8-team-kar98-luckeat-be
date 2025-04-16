@@ -69,11 +69,13 @@ jobs:
             --strategy Rolling
 
           # 배포 상태 모니터링
-          MAX_ATTEMPTS=10  # 5분 타임아웃 (10 * 30초)
+          MAX_ATTEMPTS=20  # 10분 타임아웃 (20 * 30초)
           ATTEMPT=0
+          NEW_INSTANCE_HEALTHY=false
+          OLD_INSTANCE_DRAINING=false
           
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            # ALB 타겟 그룹의 헬스체크 상태 확인
+            # ALB 타겟 그룹의 모든 타겟 상태 확인
             TARGET_HEALTH=$(aws elbv2 describe-target-health \
               --target-group-arn ${{ secrets.PROD_ALB_TARGET_GROUP_ARN }} \
               --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' \
@@ -82,18 +84,37 @@ jobs:
             echo "Target Health Status:"
             echo "$TARGET_HEALTH"
             
-            # 하나 이상의 healthy 타겟이 있는지 확인
+            # 새 인스턴스 healthy 확인
             HEALTHY_COUNT=$(echo "$TARGET_HEALTH" | grep "healthy" | wc -l)
-            
             if [ $HEALTHY_COUNT -gt 0 ]; then
-              echo "Deployment completed successfully! At least one instance is healthy."
+              NEW_INSTANCE_HEALTHY=true
+              echo "New instance is healthy"
+            fi
+            
+            # 기존 인스턴스 draining 확인
+            DRAINING_COUNT=$(echo "$TARGET_HEALTH" | grep "draining" | wc -l)
+            if [ $DRAINING_COUNT -gt 0 ]; then
+              OLD_INSTANCE_DRAINING=true
+              echo "Old instance is draining"
+            fi
+            
+            # 새 인스턴스가 healthy이고 기존 인스턴스가 draining 상태일 때 성공
+            if [ "$NEW_INSTANCE_HEALTHY" = true ] && [ "$OLD_INSTANCE_DRAINING" = true ]; then
+              echo "Deployment completed successfully!"
+              echo "- New instance is healthy"
+              echo "- Old instance is draining"
               exit 0
             fi
             
-            echo "Waiting for healthy instance... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            echo "Waiting for deployment to complete... (Attempt $ATTEMPT of $MAX_ATTEMPTS)"
+            echo "- New instance healthy: $NEW_INSTANCE_HEALTHY"
+            echo "- Old instance draining: $OLD_INSTANCE_DRAINING"
+            
             ATTEMPT=$((ATTEMPT + 1))
             sleep 30
           done
           
-          echo "Deployment timed out. No healthy instances found."
+          echo "Deployment timed out. Current status:"
+          echo "- New instance healthy: $NEW_INSTANCE_HEALTHY"
+          echo "- Old instance draining: $OLD_INSTANCE_DRAINING"
           exit 1 
