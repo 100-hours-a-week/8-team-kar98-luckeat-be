@@ -191,64 +191,63 @@ public class StoreService {
         storeRepository.save(store);
     }
 
+	// Define a simple inner class (or record) to hold the result and timing
+	public record StoreQueryResult(Page<StoreResponseDto> page, long queryExecutionTimeMs) {}
+
 	/**
-	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드
+	 * 다양한 필터 조건을 기반으로 가게 목록을 검색하는 메서드 (시간 측정 포함)
 	 *
-	 * @param lat            위도 (선택적)
-	 * @param lng            경도 (선택적)
-	 * @param radius         검색 반경 (km) (선택적)
-	 * @param sort           정렬 기준 (distance: 거리순, share: 공유순) (선택적)
-	 * @param storeName      가게 이름 검색어 (선택적)
-	 * @param isDiscountOpen 마감 할인 중인 가게만 필터링 (선택적)
-	 * @return 필터링 및 정렬된 가게 목록 DTO
+	 * @return 필터링 및 정렬된 가게 목록 DTO와 DB 쿼리 실행 시간
 	 */
-	public Page<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
+	public StoreQueryResult getStores(Double lat, Double lng, Double radius, String sort,
 											String storeName, Boolean isDiscountOpen, int page, int size, int categoryId) {
 		logger.info("가게 목록 조회 서비스 시작 - 파라미터: lat={}, lng={}, radius={}, sort={}, storeName={}, isDiscountOpen={}, page={}, size={}, categoryId={}",
 				lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
-		
-		long startTime = System.currentTimeMillis();
+
+		long serviceStartTimeNano = System.nanoTime(); // Use nanoTime for overall service timing
 		Page<Store> storesPage;
 		Pageable pageable = PageRequest.of(page, size);
-		
+		long queryExecutionTimeMs = 0; // Initialize query time in ms
+
 		try {
 			// DB 쿼리 실행 시간 측정 시작
-			long queryStartTime = System.currentTimeMillis();
-			
+			long queryStartTimeNano = System.nanoTime(); // Use nanoTime
+
 			// 위치 기반 검색이 필요한 경우
 			if (lat != null && lng != null) {
 				storesPage = storeRepository.findStoresWithLocation(
 						categoryId, storeName, isDiscountOpen, lat, lng, radius, sort, pageable);
 				logger.info("위치 기반 쿼리 실행 - categoryId={}, lat={}, lng={}, radius={}", categoryId, lat, lng, radius);
-			} 
+			}
 			// 위치 기반 검색이 필요 없는 경우
 			else {
 				storesPage = storeRepository.findStoresWithoutLocation(
 						categoryId, storeName, isDiscountOpen, sort, pageable);
 				logger.info("위치 없는 쿼리 실행 - categoryId={}, storeName={}, isDiscountOpen={}, sort={}", categoryId, storeName, isDiscountOpen, sort);
 			}
-			
-			long queryEndTime = System.currentTimeMillis();
-			long queryExecutionTime = queryEndTime - queryStartTime;
-			logger.info("DB 쿼리 실행 완료 - 실행 시간: {}ms, 조회된 데이터 수: {}", queryExecutionTime, storesPage.getNumberOfElements());
-			
+
+			long queryEndTimeNano = System.nanoTime(); // Use nanoTime
+			queryExecutionTimeMs = (queryEndTimeNano - queryStartTimeNano) / 1_000_000; // Convert ns to ms
+			logger.info("DB 쿼리 실행 완료 - 실행 시간: {}ms, 조회된 데이터 수: {}", queryExecutionTimeMs, storesPage.getNumberOfElements());
+
 			// DTO 변환 시간 측정 시작
-			long mappingStartTime = System.currentTimeMillis();
-			Page<StoreResponseDto> result = storesPage.map(StoreResponseDto::fromEntity);
-			long mappingEndTime = System.currentTimeMillis();
-			long mappingExecutionTime = mappingEndTime - mappingStartTime;
-			
-			long totalTime = System.currentTimeMillis() - startTime;
-			logger.info("가게 목록 조회 서비스 완료 - 총 실행 시간: {}ms, DB 쿼리 시간: {}ms, DTO 변환 시간: {}ms", 
-					totalTime, queryExecutionTime, mappingExecutionTime);
-			
-			return result;
+			long mappingStartTimeNano = System.nanoTime();
+			Page<StoreResponseDto> resultPage = storesPage.map(StoreResponseDto::fromEntity);
+			long mappingEndTimeNano = System.nanoTime();
+			long mappingExecutionTimeMs = (mappingEndTimeNano - mappingStartTimeNano) / 1_000_000; // Convert ns to ms
+
+			long totalServiceTimeMs = (System.nanoTime() - serviceStartTimeNano) / 1_000_000; // Calculate total service time in ms
+			logger.info("가게 목록 조회 서비스 완료 - 총 실행 시간: {}ms, DB 쿼리 시간: {}ms, DTO 변환 시간: {}ms",
+					totalServiceTimeMs, queryExecutionTimeMs, mappingExecutionTimeMs);
+
+			return new StoreQueryResult(resultPage, queryExecutionTimeMs); // Return DTO with page and query time
+
 		} catch (Exception e) {
 			logger.error("가게 목록 조회 서비스 오류 발생: {}", e.getMessage(), e);
-			throw e;
+			throw e; // Re-throw the exception
 		}
-	}	
-	
+	}
+
 	/**
 	 * 현재 인증된 사용자의 ID를 가져오는 메소드
 	 * 
