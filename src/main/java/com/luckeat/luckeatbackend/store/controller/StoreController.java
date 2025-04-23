@@ -1,5 +1,7 @@
 package com.luckeat.luckeatbackend.store.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +42,7 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "가게 API", description = "가게 정보 관련 API 목록")
 public class StoreController {
 
+	private static final Logger logger = LoggerFactory.getLogger(StoreController.class);
 	private final StoreService storeService;
 
 	/**
@@ -71,7 +74,25 @@ public class StoreController {
 			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
-		return ResponseEntity.ok(storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId));
+		try {
+			// API 호출 시작 시간 기록
+			long startTime = System.currentTimeMillis();
+			
+			// 서비스 메소드 호출 (서비스 내부에서 상세 성능 측정 로직 수행)
+			Page<StoreResponseDto> result = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
+			
+			// API 총 실행 시간 계산
+			long endTime = System.currentTimeMillis();
+			long executionTime = endTime - startTime;
+			
+			// 컨트롤러 레벨에서는 전체 API 실행 시간만 로깅 (상세 측정은 서비스에서 수행)
+			logger.info("가게 목록 조회 API 총 실행 시간: {}ms", executionTime);
+			
+			return ResponseEntity.ok(result);
+		} catch (Exception e) {
+			logger.error("가게 목록 조회 API 오류: {}", e.getMessage(), e);
+			throw e;
+		}
 	}
 
 	/**

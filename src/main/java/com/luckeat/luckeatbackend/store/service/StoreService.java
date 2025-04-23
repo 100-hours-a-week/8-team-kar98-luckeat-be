@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,14 +35,13 @@ import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StoreService {
 
+	private static final Logger logger = LoggerFactory.getLogger(StoreService.class);
 	private final StoreRepository storeRepository;
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
@@ -203,22 +204,49 @@ public class StoreService {
 	 */
 	public Page<StoreResponseDto> getStores(Double lat, Double lng, Double radius, String sort,
 											String storeName, Boolean isDiscountOpen, int page, int size, int categoryId) {
-
-		Page<Store> storesPage;
-    	Pageable pageable = PageRequest.of(page, size);
-    
-		// 위치 기반 검색이 필요한 경우
-		if (lat != null && lng != null) {
-			storesPage = storeRepository.findStoresWithLocation(
-					categoryId, storeName, isDiscountOpen, lat, lng, radius, sort, pageable);
-		} 
-		// 위치 기반 검색이 필요 없는 경우
-		else {
-			storesPage = storeRepository.findStoresWithoutLocation(
-					categoryId, storeName, isDiscountOpen, sort, pageable);
-		}
+		logger.info("가게 목록 조회 서비스 시작 - 파라미터: lat={}, lng={}, radius={}, sort={}, storeName={}, isDiscountOpen={}, page={}, size={}, categoryId={}",
+				lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
 		
-		return storesPage.map(StoreResponseDto::fromEntity);
+		long startTime = System.currentTimeMillis();
+		Page<Store> storesPage;
+		Pageable pageable = PageRequest.of(page, size);
+		
+		try {
+			// DB 쿼리 실행 시간 측정 시작
+			long queryStartTime = System.currentTimeMillis();
+			
+			// 위치 기반 검색이 필요한 경우
+			if (lat != null && lng != null) {
+				storesPage = storeRepository.findStoresWithLocation(
+						categoryId, storeName, isDiscountOpen, lat, lng, radius, sort, pageable);
+				logger.info("위치 기반 쿼리 실행 - categoryId={}, lat={}, lng={}, radius={}", categoryId, lat, lng, radius);
+			} 
+			// 위치 기반 검색이 필요 없는 경우
+			else {
+				storesPage = storeRepository.findStoresWithoutLocation(
+						categoryId, storeName, isDiscountOpen, sort, pageable);
+				logger.info("위치 없는 쿼리 실행 - categoryId={}, storeName={}, isDiscountOpen={}, sort={}", categoryId, storeName, isDiscountOpen, sort);
+			}
+			
+			long queryEndTime = System.currentTimeMillis();
+			long queryExecutionTime = queryEndTime - queryStartTime;
+			logger.info("DB 쿼리 실행 완료 - 실행 시간: {}ms, 조회된 데이터 수: {}", queryExecutionTime, storesPage.getNumberOfElements());
+			
+			// DTO 변환 시간 측정 시작
+			long mappingStartTime = System.currentTimeMillis();
+			Page<StoreResponseDto> result = storesPage.map(StoreResponseDto::fromEntity);
+			long mappingEndTime = System.currentTimeMillis();
+			long mappingExecutionTime = mappingEndTime - mappingStartTime;
+			
+			long totalTime = System.currentTimeMillis() - startTime;
+			logger.info("가게 목록 조회 서비스 완료 - 총 실행 시간: {}ms, DB 쿼리 시간: {}ms, DTO 변환 시간: {}ms", 
+					totalTime, queryExecutionTime, mappingExecutionTime);
+			
+			return result;
+		} catch (Exception e) {
+			logger.error("가게 목록 조회 서비스 오류 발생: {}", e.getMessage(), e);
+			throw e;
+		}
 	}	
 	
 	/**
@@ -231,7 +259,7 @@ public class StoreService {
 
 		if (authentication == null || !authentication.isAuthenticated()
 				|| authentication instanceof AnonymousAuthenticationToken) {
-			log.error("인증되지 않은 사용자 접근: {}", authentication);
+			logger.error("인증되지 않은 사용자 접근: {}", authentication);
 			throw new StoreUnauthenticatedException();
 		}
 
@@ -249,7 +277,7 @@ public class StoreService {
 					return new StoreNotFoundException("가게를 찾을 수 없습니다.");
 				});
 		
-		log.info("찾은 가게 정보: id={}, name={}", store.getId(), store.getStoreName());
+		logger.info("찾은 가게 정보: id={}, name={}", store.getId(), store.getStoreName());
 		return MyStoreResponseDto.fromEntity(store);
 	}
 }

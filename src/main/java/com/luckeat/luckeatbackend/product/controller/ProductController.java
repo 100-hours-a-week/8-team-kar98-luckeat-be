@@ -1,6 +1,5 @@
 package com.luckeat.luckeatbackend.product.controller;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,21 +16,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.luckeat.luckeatbackend.common.exception.product.ProductNotFoundException;
+import com.luckeat.luckeatbackend.product.dto.ProductCountRequestDto;
 import com.luckeat.luckeatbackend.product.dto.ProductRequestDto;
 import com.luckeat.luckeatbackend.product.dto.ProductResponseDto;
 import com.luckeat.luckeatbackend.product.dto.ProductStatusRequestDto;
-import com.luckeat.luckeatbackend.product.dto.ProductCountRequestDto;
 import com.luckeat.luckeatbackend.product.model.Product;
 import com.luckeat.luckeatbackend.product.service.ProductService;
 
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/stores/{store_id}/products")
@@ -119,8 +118,7 @@ public class ProductController {
 			@PathVariable("product_id") Long productId,
 			@Valid @RequestBody ProductCountRequestDto countRequestDto) {
 		
-		Product product = productService.updateProductCount(storeId, productId, countRequestDto.getProductCount())
-				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+		Product product = productService.updateProductCount(storeId, productId, countRequestDto.getProductCount());
 		
 		return ResponseEntity.ok(ProductResponseDto.fromEntity(product));
 	}
