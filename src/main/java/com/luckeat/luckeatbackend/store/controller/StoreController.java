@@ -24,6 +24,7 @@ import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
 import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
 import com.luckeat.luckeatbackend.store.service.StoreService;
+import com.luckeat.luckeatbackend.store.service.StoreService.StoreQueryResult;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,6 +35,13 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/stores")
@@ -74,25 +82,109 @@ public class StoreController {
 			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
-		try {
-			// API 호출 시작 시간 기록
-			long startTime = System.currentTimeMillis();
-			
-			// 서비스 메소드 호출 (서비스 내부에서 상세 성능 측정 로직 수행)
-			Page<StoreResponseDto> result = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
-			
-			// API 총 실행 시간 계산
-			long endTime = System.currentTimeMillis();
-			long executionTime = endTime - startTime;
-			
-			// 컨트롤러 레벨에서는 전체 API 실행 시간만 로깅 (상세 측정은 서비스에서 수행)
-			logger.info("가게 목록 조회 API 총 실행 시간: {}ms", executionTime);
-			
-			return ResponseEntity.ok(result);
-		} catch (Exception e) {
-			logger.error("가게 목록 조회 API 오류: {}", e.getMessage(), e);
-			throw e;
+		StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
+		Page<StoreResponseDto> pageResult = queryResult.page();
+		return ResponseEntity.ok(pageResult);
+	}
+
+	@Operation(summary = "가게 목록 조회 성능 테스트", description = "가게 목록 조회 API를 1000번 호출하여 성능 지표(min, max, avg, p99)를 측정합니다.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "성능 테스트 결과 반환")
+	})
+	@GetMapping("/performance-test")
+	public ResponseEntity<Map<String, Object>> runStoreSearchPerformanceTest(
+			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
+			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
+			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
+			@Parameter(description = "정렬 기준 (distance, rating, share)") @RequestParam(required = false) String sort,
+			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
+			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen,
+			@Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") int page,
+			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
+			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
+
+		int iterations = 100;
+		List<Long> totalExecutionTimes = new ArrayList<>(iterations);
+		List<Long> dbQueryTimes = new ArrayList<>(iterations);
+		long totalApiExecutionTime = 0;
+		long totalDbQueryTime = 0;
+		int successfulIterations = 0;
+		Page<StoreResponseDto> lastResultPage = null;
+
+		logger.info("가게 목록 조회 성능 테스트 시작 ({}회 반복)", iterations);
+
+		for (int i = 0; i < iterations; i++) {
+			try {
+				long apiStartTime = System.nanoTime();
+
+				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
+				lastResultPage = queryResult.page();
+				long dbTime = queryResult.queryExecutionTimeMs();
+
+				long apiEndTime = System.nanoTime();
+				long apiExecutionTime = (apiEndTime - apiStartTime) / 1_000_000;
+
+				totalExecutionTimes.add(apiExecutionTime);
+				dbQueryTimes.add(dbTime);
+				totalApiExecutionTime += apiExecutionTime;
+				totalDbQueryTime += dbTime;
+				successfulIterations++;
+
+				if ((i + 1) % 100 == 0) {
+					logger.info("성능 테스트 진행 중... ({} / {})", i + 1, iterations);
+				}
+
+			} catch (Exception e) {
+				logger.error("성능 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage());
+			}
 		}
+
+		Map<String, Object> results = new HashMap<>();
+		results.put("totalIterations", iterations);
+		results.put("successfulIterations", successfulIterations);
+
+		if (successfulIterations > 0) {
+			Collections.sort(totalExecutionTimes);
+			long minApiTime = totalExecutionTimes.get(0);
+			long maxApiTime = totalExecutionTimes.get(successfulIterations - 1);
+			double avgApiTime = (double) totalApiExecutionTime / successfulIterations;
+			long p99ApiTime = totalExecutionTimes.get((int) Math.ceil(0.99 * successfulIterations) - 1);
+
+			results.put("api_minExecutionTimeMs", minApiTime);
+			results.put("api_maxExecutionTimeMs", maxApiTime);
+			results.put("api_avgExecutionTimeMs", String.format("%.2f", avgApiTime));
+			results.put("api_p99ExecutionTimeMs", p99ApiTime);
+
+			Collections.sort(dbQueryTimes);
+			long minDbTime = dbQueryTimes.get(0);
+			long maxDbTime = dbQueryTimes.get(successfulIterations - 1);
+			double avgDbTime = (double) totalDbQueryTime / successfulIterations;
+			long p99DbTime = dbQueryTimes.get((int) Math.ceil(0.99 * successfulIterations) - 1);
+
+			results.put("db_minExecutionTimeMs", minDbTime);
+			results.put("db_maxExecutionTimeMs", maxDbTime);
+			results.put("db_avgExecutionTimeMs", String.format("%.2f", avgDbTime));
+			results.put("db_p99ExecutionTimeMs", p99DbTime);
+
+			logger.info("가게 목록 조회 성능 테스트 완료:");
+			logger.info(" - 총 반복: {}", iterations);
+			logger.info(" - 성공 반복: {}", successfulIterations);
+			logger.info(" - API 시간 (ms): Min={}, Max={}, Avg={}, P99={}",
+					minApiTime, maxApiTime, String.format("%.2f", avgApiTime), p99ApiTime);
+			logger.info(" - DB 쿼리 시간 (ms): Min={}, Max={}, Avg={}, P99={}",
+					minDbTime, maxDbTime, String.format("%.2f", avgDbTime), p99DbTime);
+
+		} else {
+			logger.warn("성공적인 테스트 반복이 없어 성능 지표를 계산할 수 없습니다.");
+			results.put("message", "No successful iterations to calculate metrics.");
+		}
+
+		if(lastResultPage != null) {
+			results.put("lastResultTotalElements", lastResultPage.getTotalElements());
+			results.put("lastResultTotalPages", lastResultPage.getTotalPages());
+		}
+
+		return ResponseEntity.ok(results);
 	}
 
 	/**
