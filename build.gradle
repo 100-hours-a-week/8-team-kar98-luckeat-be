@@ -54,6 +54,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'software.amazon.awssdk:s3:2.20.56'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
+    // Redis Dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.session:spring-session-data-redis'
     
     // Prometheus & Micrometer 의존성 추가
     implementation 'io.micrometer:micrometer-registry-prometheus'
