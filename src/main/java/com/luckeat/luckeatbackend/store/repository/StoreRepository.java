@@ -31,58 +31,49 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
 	List<Store> findAllByCategoryId(Long categoryId);
 
-	// 위치 기반 필터링 및 정렬을 위한 네이티브 쿼리
-       @Query(value = "SELECT * FROM store s WHERE s.deleted_at IS NULL " +
-           "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
-           "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
-           "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
-           "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
-           "AND (:radius IS NULL OR " +
-           "(6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= :radius) " +
-           "ORDER BY " +
-           "CASE WHEN :sort = 'distance' THEN (6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) END ASC, " +
-           "CASE WHEN :sort = 'share' THEN s.share_count END DESC, " +
-           "CASE WHEN :sort = 'rating' THEN s.avg_rating_google END DESC, " +
-           "s.id ASC",
-           countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
-           "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
-           "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
-           "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
-           "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
-           "AND (:radius IS NULL OR " +
-           "(6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= :radius)",
-           nativeQuery = true)
-    Page<Store> findStoresWithLocation(
-            @Param("categoryId") int categoryId,
-            @Param("storeName") String storeName,
-            @Param("isDiscountOpen") Boolean isDiscountOpen,
-            @Param("lat") Double lat,
-            @Param("lng") Double lng,
-            @Param("radius") Double radius,
-            @Param("sort") String sort,
-            Pageable pageable);
+	// 위치 기반 필터링 (정렬은 Pageable에 위임, 거리순 정렬은 특수 처리 필요)
+	@Query(value = "SELECT *, " +
+		   "(6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) as distance " +
+		   "FROM store s WHERE s.deleted_at IS NULL " +
+		   "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
+		   "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
+		   "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
+		   "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
+		   "AND (:radius IS NULL OR " +
+		   "(6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= :radius) " +
+		   "ORDER BY distance ASC", // 네이티브 쿼리 내 정렬 로직은 유지 (거리순)
+		   countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
+		   "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
+		   "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
+		   "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
+		   "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
+		   "AND (:radius IS NULL OR " +
+		   "(6371 * acos(cos(radians(:lat)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(s.latitude)))) <= :radius)",
+		   nativeQuery = true)
+	Page<Store> findStoresWithLocation( // 메소드 시그니처에서 sort 파라미터 제거
+			@Param("categoryId") int categoryId,
+			@Param("storeName") String storeName,
+			@Param("isDiscountOpen") Boolean isDiscountOpen,
+			@Param("lat") Double lat,
+			@Param("lng") Double lng,
+			@Param("radius") Double radius,
+			Pageable pageable);
 
-	// 위치 없이 정렬만 하는 쿼리
-       @Query(value = "SELECT * FROM store s WHERE s.deleted_at IS NULL " +
-              "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
-              "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
-              "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
-              "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL)) " +
-              "ORDER BY " +
-              "CASE WHEN :sort = 'rating' THEN s.avg_rating_google ELSE NULL END DESC, " +
-              "CASE WHEN :sort = 'share' THEN s.share_count ELSE NULL END DESC, " +
-              "CASE WHEN :sort = 'review' THEN (SELECT COUNT(*) FROM review r WHERE r.store_id = s.id AND r.deleted_at IS NULL) ELSE NULL END DESC, " +
-              "s.id ASC",
-              countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
-              "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
-              "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
-              "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
-              "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL))",
-              nativeQuery = true)
-       Page<Store> findStoresWithoutLocation(
-              @Param("categoryId") int categoryId,
-              @Param("storeName") String storeName,
-              @Param("isDiscountOpen") Boolean isDiscountOpen,
-              @Param("sort") String sort,
-              Pageable pageable);
+	// 위치 없이 정렬만 하는 쿼리 (정렬은 Pageable에 위임)
+	@Query(value = "SELECT * FROM store s WHERE s.deleted_at IS NULL " +
+		   "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
+		   "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
+		   "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
+		   "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL))", // 네이티브 쿼리 내 ORDER BY 제거
+		   countQuery = "SELECT COUNT(*) FROM store s WHERE s.deleted_at IS NULL " +
+		   "AND (:categoryId = 0 OR s.category_id = :categoryId) " +
+		   "AND (:storeName IS NULL OR LOWER(s.store_name) LIKE LOWER(CONCAT('%', :storeName, '%'))) " +
+		   "AND (:isDiscountOpen IS NULL OR :isDiscountOpen = " +
+		   "EXISTS (SELECT 1 FROM product p WHERE p.store_id = s.id AND p.is_open = true AND p.deleted_at IS NULL))",
+		   nativeQuery = true)
+	Page<Store> findStoresWithoutLocation( // 메소드 시그니처에서 sort 파라미터 제거
+			@Param("categoryId") int categoryId,
+			@Param("storeName") String storeName,
+			@Param("isDiscountOpen") Boolean isDiscountOpen,
+			Pageable pageable);
 }
