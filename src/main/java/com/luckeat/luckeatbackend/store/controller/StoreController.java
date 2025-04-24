@@ -3,6 +3,10 @@ package com.luckeat.luckeatbackend.store.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -21,10 +25,10 @@ import com.luckeat.luckeatbackend.common.exception.store.StoreNotFoundException;
 import com.luckeat.luckeatbackend.common.exception.store.StoreUnauthenticatedException;
 import com.luckeat.luckeatbackend.store.dto.MyStoreResponseDto;
 import com.luckeat.luckeatbackend.store.dto.StoreDetailResponseDto;
+import com.luckeat.luckeatbackend.store.dto.StoreListDto;
 import com.luckeat.luckeatbackend.store.dto.StoreRequestDto;
-import com.luckeat.luckeatbackend.store.dto.StoreResponseDto;
+import com.luckeat.luckeatbackend.store.dto.StoreQueryResult;
 import com.luckeat.luckeatbackend.store.service.StoreService;
-import com.luckeat.luckeatbackend.store.service.StoreService.StoreQueryResult;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -71,7 +75,7 @@ public class StoreController {
 		@ApiResponse(responseCode = "200", description = "가게 목록 조회 성공")
 	})
 	@GetMapping
-	public ResponseEntity<Page<StoreResponseDto>> getAllStores(
+	public ResponseEntity<Page<StoreListDto>> getAllStores(
 			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
 			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
@@ -83,7 +87,8 @@ public class StoreController {
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
 		StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
-		Page<StoreResponseDto> pageResult = queryResult.page();
+		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
+		Page<StoreListDto> pageResult = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
 		return ResponseEntity.ok(pageResult);
 	}
 
@@ -109,7 +114,8 @@ public class StoreController {
 		long totalApiExecutionTime = 0;
 		long totalDbQueryTime = 0;
 		int successfulIterations = 0;
-		Page<StoreResponseDto> lastResultPage = null;
+		Page<StoreListDto> lastResultPage = null;
+		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
 
 		logger.info("가게 목록 조회 성능 테스트 시작 ({}회 반복)", iterations);
 
@@ -118,8 +124,8 @@ public class StoreController {
 				long apiStartTime = System.nanoTime();
 
 				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
-				lastResultPage = queryResult.page();
-				long dbTime = queryResult.queryExecutionTimeMs();
+				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
+				long dbTime = queryResult.getQueryExecutionTimeMs();
 
 				long apiEndTime = System.nanoTime();
 				long apiExecutionTime = (apiEndTime - apiStartTime) / 1_000_000;
@@ -135,7 +141,7 @@ public class StoreController {
 				}
 
 			} catch (Exception e) {
-				logger.error("성능 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage());
+				logger.error("성능 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
 			}
 		}
 
@@ -185,6 +191,26 @@ public class StoreController {
 		}
 
 		return ResponseEntity.ok(results);
+	}
+
+	private Sort parseSortParameter(String sortParam) {
+		if (sortParam == null || sortParam.isBlank()) {
+			return Sort.unsorted();
+		}
+		String[] parts = sortParam.split(",");
+		String property = parts[0];
+		Sort.Direction direction = Sort.Direction.ASC;
+		if (parts.length > 1 && parts[1].equalsIgnoreCase("desc")) {
+			direction = Sort.Direction.DESC;
+		}
+		if ("distance".equals(property)) {
+			return Sort.unsorted();
+		} else if ("rating".equals(property)) {
+			property = "avgRatingGoogle";
+		} else if ("share".equals(property)) {
+			property = "shareCount";
+		}
+		return Sort.by(direction, property);
 	}
 
 	/**
