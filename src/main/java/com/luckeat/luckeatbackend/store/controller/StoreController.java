@@ -193,6 +193,23 @@ public class StoreController {
 		return ResponseEntity.ok(results);
 	}
 
+	/**
+	 * 가게 상세 정보를 조회합니다.
+	 * 
+	 * @param storeId 조회할 가게 ID
+	 * @return 가게 상세 정보
+	 * @throws StoreNotFoundException 가게가 존재하지 않는 경우 발생
+	 */
+	@Operation(summary = "가게 상세 정보 조회", description = "가게 ID로 가게 상세 정보를 조회합니다")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "가게 상세 정보 조회 성공"),
+		@ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음", content = @Content)
+	})
+	@GetMapping("/{store_id}")
+	public ResponseEntity<StoreDetailResponseDto> getStoreDetailById(@PathVariable("store_id") Long storeId) {
+		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
+	}
+
 	private Sort parseSortParameter(String sortParam) {
 		if (sortParam == null || sortParam.isBlank()) {
 			return Sort.unsorted();
@@ -211,23 +228,6 @@ public class StoreController {
 			property = "shareCount";
 		}
 		return Sort.by(direction, property);
-	}
-
-	/**
-	 * 가게 상세 정보를 조회합니다.
-	 * 
-	 * @param storeId 조회할 가게 ID
-	 * @return 가게 상세 정보
-	 * @throws StoreNotFoundException 가게가 존재하지 않는 경우 발생
-	 */
-	@Operation(summary = "가게 상세 정보 조회", description = "가게 ID로 가게 상세 정보를 조회합니다")
-	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "가게 상세 정보 조회 성공"),
-		@ApiResponse(responseCode = "404", description = "가게를 찾을 수 없음", content = @Content)
-	})
-	@GetMapping("/{store_id}")
-	public ResponseEntity<StoreDetailResponseDto> getStoreDetailById(@PathVariable("store_id") Long storeId) {
-		return ResponseEntity.ok(storeService.getStoreDetailById(storeId));
 	}
 
 	/**
