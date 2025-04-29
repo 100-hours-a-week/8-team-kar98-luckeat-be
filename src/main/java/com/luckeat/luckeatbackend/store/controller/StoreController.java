@@ -121,11 +121,10 @@ public class StoreController {
 		for (int i = 0; i < iterations; i++) {
 			try {
 				long apiStartTime = System.nanoTime();
-				// bypassCache = true로 설정하여 DB 직접 조회 강제
 				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, true);
-				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements()); // 마지막 결과 저장은 필요시 유지
+				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
 				long apiEndTime = System.nanoTime();
-				dbExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
+				dbExecutionTimes.add(apiEndTime - apiStartTime);
 				successfulDbIterations++;
 			} catch (Exception e) {
 				logger.error("DB 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
@@ -134,9 +133,10 @@ public class StoreController {
 
 		if (successfulDbIterations > 0) {
 			Collections.sort(dbExecutionTimes);
-			long p99DbTime = dbExecutionTimes.get((int) Math.ceil(0.99 * successfulDbIterations) - 1);
-			results.put("db_p99ExecutionTimeMs", p99DbTime);
-			logger.info("DB 직접 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", p99DbTime, successfulDbIterations, iterations);
+			long p99DbTimeNano = dbExecutionTimes.get((int) Math.ceil(0.99 * successfulDbIterations) - 1);
+			double p99DbTimeMs = p99DbTimeNano / 1_000_000.0;
+			results.put("db_p99ExecutionTimeMs", p99DbTimeMs);
+			logger.info("DB 직접 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", String.format("%.3f", p99DbTimeMs), successfulDbIterations, iterations);
 		} else {
 			results.put("db_p99ExecutionTimeMs", "N/A");
 			logger.warn("DB 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
@@ -147,26 +147,23 @@ public class StoreController {
 		int successfulCacheIterations = 0;
 		logger.info("캐시 조회 성능 테스트 시작 ({}회 반복)", iterations);
 
-		// 캐시 예열 (Warm-up) - 첫 호출은 캐시에 없을 수 있으므로 제외하고 캐시에 데이터를 넣기 위해 실행
+		// 캐시 예열 (Warm-up)
 		try {
-		 // bypassCache = false를 명시적으로 전달하여 캐시를 사용하도록 함
 		 storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, false);
 		 logger.info("캐시 예열 완료.");
 		} catch (Exception e) {
 			logger.warn("캐시 예열 중 오류 발생: {}", e.getMessage());
 		}
 
-
 		for (int i = 0; i < iterations; i++) {
 			try {
 				long apiStartTime = System.nanoTime();
-				// bypassCache = false로 설정하여 캐시 사용 (기본 동작)
 				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, false);
-				if (i == iterations -1) { // 캐시 테스트의 마지막 결과 저장
+				if (i == iterations -1) {
 					lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
 				}
 				long apiEndTime = System.nanoTime();
-				cacheExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
+				cacheExecutionTimes.add(apiEndTime - apiStartTime);
 				successfulCacheIterations++;
 			} catch (Exception e) {
 				logger.error("캐시 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
@@ -175,14 +172,14 @@ public class StoreController {
 
 		if (successfulCacheIterations > 0) {
 			Collections.sort(cacheExecutionTimes);
-			long p99CacheTime = cacheExecutionTimes.get((int) Math.ceil(0.99 * successfulCacheIterations) - 1);
-			results.put("cache_p99ExecutionTimeMs", p99CacheTime);
-			logger.info("캐시 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", p99CacheTime, successfulCacheIterations, iterations);
+			long p99CacheTimeNano = cacheExecutionTimes.get((int) Math.ceil(0.99 * successfulCacheIterations) - 1);
+			double p99CacheTimeMs = p99CacheTimeNano / 1_000_000.0;
+			results.put("cache_p99ExecutionTimeMs", p99CacheTimeMs);
+			logger.info("캐시 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", String.format("%.3f", p99CacheTimeMs), successfulCacheIterations, iterations);
 		} else {
 			results.put("cache_p99ExecutionTimeMs", "N/A");
 			logger.warn("캐시 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
 		}
-
 
 		results.put("totalIterationsPerTest", iterations);
 		if (lastResultPage != null) {
