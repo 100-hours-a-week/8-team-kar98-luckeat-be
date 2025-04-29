@@ -86,81 +86,117 @@ public class StoreController {
 			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
-		StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
+		StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, false);
 		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
 		Page<StoreListDto> pageResult = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
 		return ResponseEntity.ok(pageResult);
 	}
 
-	@Operation(summary = "가게 목록 조회 성능 테스트", description = "가게 목록 조회 API를 1000번 호출하여 성능 지표(min, max, avg, p99)를 측정합니다.")
+	@Operation(summary = "가게 목록 조회 성능 테스트 (DB vs Cache)", description = "가게 목록 조회 API를 DB 직접 조회와 캐시 조회 각각 100번 호출하여 성능 지표(p99)를 측정합니다.")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "성능 테스트 결과 반환")
 	})
 	@GetMapping("/test/performance-test")
 	public ResponseEntity<Map<String, Object>> runStoreSearchPerformanceTest(
-			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
+			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat,
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
-			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius, 
+			@Parameter(description = "검색 반경 (km)") @RequestParam(required = false) Double radius,
 			@Parameter(description = "정렬 기준 (distance, rating, share)") @RequestParam(required = false) String sort,
-			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName, 
+			@Parameter(description = "가게 이름 검색어") @RequestParam(required = false) String storeName,
 			@Parameter(description = "할인 중인 가게만 조회 여부") @RequestParam(required = false) Boolean isDiscountOpen,
 			@Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") int page,
 			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
 		int iterations = 100;
-		List<Long> totalExecutionTimes = new ArrayList<>(iterations);
-		int successfulIterations = 0;
-		Page<StoreListDto> lastResultPage = null;
+		Map<String, Object> results = new HashMap<>();
 		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
+		Page<StoreListDto> lastResultPage = null;
 
-		logger.info("API 성능 테스트 시작 ({}회 반복, p99 측정)", iterations);
+		// --- DB 직접 조회 테스트 ---
+		List<Long> dbExecutionTimes = new ArrayList<>(iterations);
+		int successfulDbIterations = 0;
+		logger.info("DB 직접 조회 성능 테스트 시작 ({}회 반복)", iterations);
 
 		for (int i = 0; i < iterations; i++) {
 			try {
 				long apiStartTime = System.nanoTime();
-
-				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
-				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
-
+				// bypassCache = true로 설정하여 DB 직접 조회 강제
+				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, true);
+				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements()); // 마지막 결과 저장은 필요시 유지
 				long apiEndTime = System.nanoTime();
-				long apiExecutionTime = (apiEndTime - apiStartTime) / 1_000_000;
-
-				totalExecutionTimes.add(apiExecutionTime);
-				successfulIterations++;
-
-				if ((i + 1) % 100 == 0) {
-					logger.info("성능 테스트 진행 중... ({} / {})", i + 1, iterations);
+				dbExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
+				successfulDbIterations++;
+				if ((i + 1) % (iterations / 10) == 0) { // 진행 상황 로깅
+					logger.info("DB 테스트 진행 중... ({} / {})", i + 1, iterations);
 				}
-
 			} catch (Exception e) {
-				logger.error("성능 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
+				logger.error("DB 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
 			}
 		}
 
-		Map<String, Object> results = new HashMap<>();
-		results.put("totalIterations", iterations);
-		results.put("successfulIterations", successfulIterations);
-
-		if (successfulIterations > 0) {
-			Collections.sort(totalExecutionTimes);
-			long p99ApiTime = totalExecutionTimes.get((int) Math.ceil(0.99 * successfulIterations) - 1);
-
-			results.put("api_p99ExecutionTimeMs", p99ApiTime);
-
-			logger.info("API 성능 테스트 완료:");
-			logger.info(" - 총 반복: {}", iterations);
-			logger.info(" - 성공 반복: {}", successfulIterations);
-			logger.info(" - API 시간 P99 (ms): {}", p99ApiTime);
-
+		if (successfulDbIterations > 0) {
+			Collections.sort(dbExecutionTimes);
+			long p99DbTime = dbExecutionTimes.get((int) Math.ceil(0.99 * successfulDbIterations) - 1);
+			results.put("db_p99ExecutionTimeMs", p99DbTime);
+			logger.info("DB 직접 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", p99DbTime, successfulDbIterations, iterations);
 		} else {
-			logger.warn("성공적인 테스트 반복이 없어 성능 지표를 계산할 수 없습니다.");
-			results.put("message", "No successful iterations to calculate metrics.");
+			results.put("db_p99ExecutionTimeMs", "N/A");
+			logger.warn("DB 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
 		}
 
-		if(lastResultPage != null) {
+		// --- 캐시 조회 테스트 ---
+		List<Long> cacheExecutionTimes = new ArrayList<>(iterations);
+		int successfulCacheIterations = 0;
+		logger.info("캐시 조회 성능 테스트 시작 ({}회 반복)", iterations);
+
+		// 캐시 예열 (Warm-up) - 첫 호출은 캐시에 없을 수 있으므로 제외하고 캐시에 데이터를 넣기 위해 실행
+		try {
+		 // bypassCache = false를 명시적으로 전달하여 캐시를 사용하도록 함
+		 storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, false);
+		 logger.info("캐시 예열 완료.");
+		} catch (Exception e) {
+			logger.warn("캐시 예열 중 오류 발생: {}", e.getMessage());
+		}
+
+
+		for (int i = 0; i < iterations; i++) {
+			try {
+				long apiStartTime = System.nanoTime();
+				// bypassCache = false로 설정하여 캐시 사용 (기본 동작)
+				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId, false);
+				if (i == iterations -1) { // 캐시 테스트의 마지막 결과 저장
+					lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
+				}
+				long apiEndTime = System.nanoTime();
+				cacheExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
+				successfulCacheIterations++;
+				if ((i + 1) % (iterations / 10) == 0) { // 진행 상황 로깅
+					logger.info("캐시 테스트 진행 중... ({} / {})", i + 1, iterations);
+				}
+			} catch (Exception e) {
+				logger.error("캐시 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
+			}
+		}
+
+		if (successfulCacheIterations > 0) {
+			Collections.sort(cacheExecutionTimes);
+			long p99CacheTime = cacheExecutionTimes.get((int) Math.ceil(0.99 * successfulCacheIterations) - 1);
+			results.put("cache_p99ExecutionTimeMs", p99CacheTime);
+			logger.info("캐시 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", p99CacheTime, successfulCacheIterations, iterations);
+		} else {
+			results.put("cache_p99ExecutionTimeMs", "N/A");
+			logger.warn("캐시 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
+		}
+
+
+		results.put("totalIterationsPerTest", iterations);
+		if (lastResultPage != null) {
 			results.put("lastResultTotalElements", lastResultPage.getTotalElements());
 			results.put("lastResultTotalPages", lastResultPage.getTotalPages());
+		} else {
+			// 두 테스트 모두 실패했거나 결과를 얻지 못한 경우
+			results.put("lastResult", "N/A (테스트 실패 또는 결과 없음)");
 		}
 
 		return ResponseEntity.ok(results);
@@ -283,3 +319,4 @@ public class StoreController {
 		return ResponseEntity.ok(storeService.getMyStore());
 	}
 }
+

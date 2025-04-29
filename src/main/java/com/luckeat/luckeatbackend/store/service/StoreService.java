@@ -197,13 +197,18 @@ public class StoreService {
 	 * 위치 기반 검색, 이름 검색, 할인 여부 필터링, 카테고리 필터링 기능을 제공합니다.
 	 * 캐시를 적용하여 성능을 향상시켰습니다. 조건부 캐싱을 사용하여 다양한 검색 조건에 대응합니다.
 	 *
+	 * @param bypassCache true일 경우 캐시를 사용하지 않고 DB에서 직접 조회합니다.
 	 * @return 가게 목록 검색 결과 (페이징 정보 포함)
 	 */
 	@Cacheable(value = "stores", key = "T(com.luckeat.luckeatbackend.store.service.StoreService).generateCacheKey(#sort, #isDiscountOpen, #page, #size, #categoryId)",
-			   condition = "#storeName == null && (#lat == null || #lng == null)")
+			   condition = "!#bypassCache && #storeName == null && (#lat == null || #lng == null)")
 	public StoreQueryResult getStores(Double lat, Double lng, Double radius, String sort,
-										String storeName, Boolean isDiscountOpen, int page, int size, int categoryId) {
-		
+										String storeName, Boolean isDiscountOpen, int page, int size, int categoryId, boolean bypassCache) {
+
+		if (bypassCache) {
+			logger.info("캐시 우회: DB에서 직접 가게 목록 조회 수행");
+		}
+
 		long startTime = System.currentTimeMillis(); // 쿼리 시간 측정 시작
 
 		Sort sortOrder = SortUtil.parseSortParameter(sort);
