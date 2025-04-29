@@ -96,7 +96,7 @@ public class StoreController {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "성능 테스트 결과 반환")
 	})
-	@GetMapping("test/performance-test")
+	@GetMapping("/test/performance-test")
 	public ResponseEntity<Map<String, Object>> runStoreSearchPerformanceTest(
 			@Parameter(description = "현재 위치 위도") @RequestParam(required = false) Double lat, 
 			@Parameter(description = "현재 위치 경도") @RequestParam(required = false) Double lng,
