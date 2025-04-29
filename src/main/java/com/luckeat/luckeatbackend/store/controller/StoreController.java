@@ -110,14 +110,11 @@ public class StoreController {
 
 		int iterations = 100;
 		List<Long> totalExecutionTimes = new ArrayList<>(iterations);
-		List<Long> dbQueryTimes = new ArrayList<>(iterations);
-		long totalApiExecutionTime = 0;
-		long totalDbQueryTime = 0;
 		int successfulIterations = 0;
 		Page<StoreListDto> lastResultPage = null;
 		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
 
-		logger.info("가게 목록 조회 성능 테스트 시작 ({}회 반복)", iterations);
+		logger.info("API 성능 테스트 시작 ({}회 반복, p99 측정)", iterations);
 
 		for (int i = 0; i < iterations; i++) {
 			try {
@@ -125,15 +122,11 @@ public class StoreController {
 
 				StoreQueryResult queryResult = storeService.getStores(lat, lng, radius, sort, storeName, isDiscountOpen, page, size, categoryId);
 				lastResultPage = new PageImpl<>(queryResult.getContent(), pageable, queryResult.getTotalElements());
-				long dbTime = queryResult.getQueryExecutionTimeMs();
 
 				long apiEndTime = System.nanoTime();
 				long apiExecutionTime = (apiEndTime - apiStartTime) / 1_000_000;
 
 				totalExecutionTimes.add(apiExecutionTime);
-				dbQueryTimes.add(dbTime);
-				totalApiExecutionTime += apiExecutionTime;
-				totalDbQueryTime += dbTime;
 				successfulIterations++;
 
 				if ((i + 1) % 100 == 0) {
@@ -151,34 +144,14 @@ public class StoreController {
 
 		if (successfulIterations > 0) {
 			Collections.sort(totalExecutionTimes);
-			long minApiTime = totalExecutionTimes.get(0);
-			long maxApiTime = totalExecutionTimes.get(successfulIterations - 1);
-			double avgApiTime = (double) totalApiExecutionTime / successfulIterations;
 			long p99ApiTime = totalExecutionTimes.get((int) Math.ceil(0.99 * successfulIterations) - 1);
 
-			results.put("api_minExecutionTimeMs", minApiTime);
-			results.put("api_maxExecutionTimeMs", maxApiTime);
-			results.put("api_avgExecutionTimeMs", String.format("%.2f", avgApiTime));
 			results.put("api_p99ExecutionTimeMs", p99ApiTime);
 
-			Collections.sort(dbQueryTimes);
-			long minDbTime = dbQueryTimes.get(0);
-			long maxDbTime = dbQueryTimes.get(successfulIterations - 1);
-			double avgDbTime = (double) totalDbQueryTime / successfulIterations;
-			long p99DbTime = dbQueryTimes.get((int) Math.ceil(0.99 * successfulIterations) - 1);
-
-			results.put("db_minExecutionTimeMs", minDbTime);
-			results.put("db_maxExecutionTimeMs", maxDbTime);
-			results.put("db_avgExecutionTimeMs", String.format("%.2f", avgDbTime));
-			results.put("db_p99ExecutionTimeMs", p99DbTime);
-
-			logger.info("가게 목록 조회 성능 테스트 완료:");
+			logger.info("API 성능 테스트 완료:");
 			logger.info(" - 총 반복: {}", iterations);
 			logger.info(" - 성공 반복: {}", successfulIterations);
-			logger.info(" - API 시간 (ms): Min={}, Max={}, Avg={}, P99={}",
-					minApiTime, maxApiTime, String.format("%.2f", avgApiTime), p99ApiTime);
-			logger.info(" - DB 쿼리 시간 (ms): Min={}, Max={}, Avg={}, P99={}",
-					minDbTime, maxDbTime, String.format("%.2f", avgDbTime), p99DbTime);
+			logger.info(" - API 시간 P99 (ms): {}", p99ApiTime);
 
 		} else {
 			logger.warn("성공적인 테스트 반복이 없어 성능 지표를 계산할 수 없습니다.");
