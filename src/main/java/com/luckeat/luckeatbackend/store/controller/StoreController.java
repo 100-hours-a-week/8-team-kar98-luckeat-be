@@ -108,7 +108,7 @@ public class StoreController {
 			@Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
 			@Parameter(description = "카테고리") @RequestParam(defaultValue = "0") int categoryId) {
 
-		int iterations = 100;
+		int iterations = 1000;
 		Map<String, Object> results = new HashMap<>();
 		Pageable pageable = PageRequest.of(page, size, parseSortParameter(sort));
 		Page<StoreListDto> lastResultPage = null;
@@ -127,9 +127,6 @@ public class StoreController {
 				long apiEndTime = System.nanoTime();
 				dbExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
 				successfulDbIterations++;
-				if ((i + 1) % (iterations / 10) == 0) { // 진행 상황 로깅
-					logger.info("DB 테스트 진행 중... ({} / {})", i + 1, iterations);
-				}
 			} catch (Exception e) {
 				logger.error("DB 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
 			}
@@ -171,9 +168,6 @@ public class StoreController {
 				long apiEndTime = System.nanoTime();
 				cacheExecutionTimes.add((apiEndTime - apiStartTime) / 1_000_000);
 				successfulCacheIterations++;
-				if ((i + 1) % (iterations / 10) == 0) { // 진행 상황 로깅
-					logger.info("캐시 테스트 진행 중... ({} / {})", i + 1, iterations);
-				}
 			} catch (Exception e) {
 				logger.error("캐시 테스트 반복 중 오류 발생 (반복 {}): {}", i + 1, e.getMessage(), e);
 			}
