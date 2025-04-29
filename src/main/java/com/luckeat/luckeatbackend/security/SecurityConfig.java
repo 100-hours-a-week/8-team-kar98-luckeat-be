@@ -56,7 +56,9 @@ public class SecurityConfig {
 				.requestMatchers("/api/v1/users/register").permitAll()
 				.requestMatchers("/api/metrics-test/**").permitAll() // 메트릭 테스트 엔드포인트 허용
 				.requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
-				.requestMatchers(HttpMethod.GET, "/api/v1/stores/**").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/{store_id:[0-9]+}").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/stores/test/performance-test").permitAll()
 				.requestMatchers("/s/**").permitAll()
 				.requestMatchers("/error").permitAll()
 				// 인증 필요 엔드포인트
