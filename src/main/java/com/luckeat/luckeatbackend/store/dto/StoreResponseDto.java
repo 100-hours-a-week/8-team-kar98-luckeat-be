@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.store.dto;
 
+import java.io.Serializable;
 import java.time.LocalTime;
 
 import com.luckeat.luckeatbackend.store.model.Store;
@@ -20,7 +21,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 @Schema(description = "가게 기본 응답 DTO")
-public class StoreResponseDto {
+public class StoreResponseDto implements Serializable {
+	private static final long serialVersionUID = 1L;
+
 	@Schema(description = "가게 ID", example = "1")
 	private Long id;
 	

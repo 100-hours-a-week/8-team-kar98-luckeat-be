@@ -1,5 +1,6 @@
 package com.luckeat.luckeatbackend.store.model;
 
+import java.io.Serializable;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 @Schema(description = "가게 엔티티")
-public class Store extends BaseEntity {
+public class Store extends BaseEntity implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	@Schema(description = "가게를 소유한 회원 ID", example = "1")
 	@Column(name = "user_id", columnDefinition = "BIGINT UNSIGNED")

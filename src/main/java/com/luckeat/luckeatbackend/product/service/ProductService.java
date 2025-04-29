@@ -20,8 +20,8 @@ import com.luckeat.luckeatbackend.product.repository.ProductRepository;
 import com.luckeat.luckeatbackend.store.model.Store;
 import com.luckeat.luckeatbackend.store.repository.StoreRepository;
 import com.luckeat.luckeatbackend.users.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -120,19 +120,24 @@ public class ProductService {
 	}
 
 	@Transactional
-	public Optional<Product> updateProductCount(Long storeId, Long productId, Long count) {
+	public Product updateProductCount(Long storeId, Long productId, Long count) {
 		// 권한 검증
 		validateStoreOwner(storeId);
 		
 		// 해당 가게의 상품인지 확인
 		Store store = getStoreById(storeId);
-		return productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store).map(product -> {
-			if (count < 0) {
-				throw new IllegalArgumentException("상품 수량은 0 이상이어야 합니다");
-			}
-			product.setProductCount(count);
-			return productRepository.save(product);
-		});
+		
+		// 상품 조회
+		Product product = productRepository.findByIdAndStoreAndDeletedAtIsNull(productId, store)
+				.orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId));
+		
+		// 수량 검증
+		if (count < 0) {
+			throw new IllegalArgumentException("상품 수량은 0 이상이어야 합니다");
+		}
+		
+		product.setProductCount(count);
+		return productRepository.save(product);
 	}
 
 	@Transactional
