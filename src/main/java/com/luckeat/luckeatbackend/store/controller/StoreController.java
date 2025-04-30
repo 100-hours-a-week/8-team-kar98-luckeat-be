@@ -133,13 +133,29 @@ public class StoreController {
 
 		if (successfulDbIterations > 0) {
 			Collections.sort(dbExecutionTimes);
+			// p90, p95, p99 모두 계산
+			long p90DbTimeNano = dbExecutionTimes.get((int) Math.ceil(0.90 * successfulDbIterations) - 1);
+			long p95DbTimeNano = dbExecutionTimes.get((int) Math.ceil(0.95 * successfulDbIterations) - 1);
 			long p99DbTimeNano = dbExecutionTimes.get((int) Math.ceil(0.99 * successfulDbIterations) - 1);
+			
+			double p90DbTimeMs = p90DbTimeNano / 1_000_000.0;
+			double p95DbTimeMs = p95DbTimeNano / 1_000_000.0;
 			double p99DbTimeMs = p99DbTimeNano / 1_000_000.0;
+			
+			results.put("db_p90ExecutionTimeMs", p90DbTimeMs);
+			results.put("db_p95ExecutionTimeMs", p95DbTimeMs);
 			results.put("db_p99ExecutionTimeMs", p99DbTimeMs);
-			logger.info("DB 직접 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", String.format("%.3f", p99DbTimeMs), successfulDbIterations, iterations);
+			
+			logger.info("DB 직접 조회 성능 테스트 완료: P90 = {}ms, P95 = {}ms, P99 = {}ms (성공: {}/{})", 
+				String.format("%.3f", p90DbTimeMs),
+				String.format("%.3f", p95DbTimeMs),
+				String.format("%.3f", p99DbTimeMs), 
+				successfulDbIterations, iterations);
 		} else {
+			results.put("db_p90ExecutionTimeMs", "N/A");
+			results.put("db_p95ExecutionTimeMs", "N/A");
 			results.put("db_p99ExecutionTimeMs", "N/A");
-			logger.warn("DB 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
+			logger.warn("DB 테스트 성공적인 반복이 없어 백분위수를 계산할 수 없습니다.");
 		}
 
 		// --- 캐시 조회 테스트 ---
@@ -172,13 +188,29 @@ public class StoreController {
 
 		if (successfulCacheIterations > 0) {
 			Collections.sort(cacheExecutionTimes);
+			// p90, p95, p99 모두 계산
+			long p90CacheTimeNano = cacheExecutionTimes.get((int) Math.ceil(0.90 * successfulCacheIterations) - 1);
+			long p95CacheTimeNano = cacheExecutionTimes.get((int) Math.ceil(0.95 * successfulCacheIterations) - 1);
 			long p99CacheTimeNano = cacheExecutionTimes.get((int) Math.ceil(0.99 * successfulCacheIterations) - 1);
+			
+			double p90CacheTimeMs = p90CacheTimeNano / 1_000_000.0;
+			double p95CacheTimeMs = p95CacheTimeNano / 1_000_000.0;
 			double p99CacheTimeMs = p99CacheTimeNano / 1_000_000.0;
+			
+			results.put("cache_p90ExecutionTimeMs", p90CacheTimeMs);
+			results.put("cache_p95ExecutionTimeMs", p95CacheTimeMs);
 			results.put("cache_p99ExecutionTimeMs", p99CacheTimeMs);
-			logger.info("캐시 조회 성능 테스트 완료: P99 = {}ms (성공: {}/{})", String.format("%.3f", p99CacheTimeMs), successfulCacheIterations, iterations);
+			
+			logger.info("캐시 조회 성능 테스트 완료: P90 = {}ms, P95 = {}ms, P99 = {}ms (성공: {}/{})", 
+				String.format("%.3f", p90CacheTimeMs),
+				String.format("%.3f", p95CacheTimeMs),
+				String.format("%.3f", p99CacheTimeMs), 
+				successfulCacheIterations, iterations);
 		} else {
+			results.put("cache_p90ExecutionTimeMs", "N/A");
+			results.put("cache_p95ExecutionTimeMs", "N/A");
 			results.put("cache_p99ExecutionTimeMs", "N/A");
-			logger.warn("캐시 테스트 성공적인 반복이 없어 P99를 계산할 수 없습니다.");
+			logger.warn("캐시 테스트 성공적인 반복이 없어 백분위수를 계산할 수 없습니다.");
 		}
 
 		results.put("totalIterationsPerTest", iterations);

@@ -35,7 +35,7 @@ public class IpAttributeFilter extends OncePerRequestFilter {
         
         // 요청 속성에 IP 주소 기반 식별자 저장
         request.setAttribute(IP_ADDRESS_ATTRIBUTE, clientId);
-        logger.debug("IP 속성 설정: {} = {}, URI: {}", IP_ADDRESS_ATTRIBUTE, clientId, request.getRequestURI());
+        //logger.debug("IP 속성 설정: {} = {}, URI: {}", IP_ADDRESS_ATTRIBUTE, clientId, request.getRequestURI());
         
         // HTTP 헤더로도 추가 (디버깅 용도)
         response.setHeader("X-Debug-ClientId", clientId);

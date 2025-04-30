@@ -17,7 +17,7 @@ public class SortUtil {
      */
     public static Sort parseSortParameter(String sortParam) {
         if (sortParam == null || sortParam.isBlank()) {
-            logger.debug("정렬 파라미터 없음, 정렬 안 함");
+            //logger.debug("정렬 파라미터 없음, 정렬 안 함");
             return Sort.unsorted();
         }
 
@@ -28,25 +28,25 @@ public class SortUtil {
         
         // 기본 정렬 방향을 DESC로 설정
         Sort.Direction direction = Sort.Direction.DESC;
-        logger.debug("기본 정렬 방향: DESC (높은 값 우선)");
+        //logger.debug("기본 정렬 방향: DESC (높은 값 우선)");
 
         String dbColumn;
         boolean useNullsLast = false;
 
         switch (property) {
             case "distance":
-                logger.debug("정렬 기준: distance (네이티브 쿼리 처리, Sort.unsorted 반환)");
+                //logger.debug("정렬 기준: distance (네이티브 쿼리 처리, Sort.unsorted 반환)");
                 // 거리순은 보통 오름차순(가까운 순)이 기본이므로 예외 처리
                 // 만약 거리도 내림차순(먼 순)이 기본이면 이 부분도 수정 필요
                 return Sort.unsorted(); // 네이티브 쿼리에서 직접 처리하므로 여기서는 unsorted
             case "rating":
                 dbColumn = "avg_rating_google";
                 useNullsLast = true; // 별점 정렬 시 NULL을 마지막으로
-                logger.debug("정렬 기준: rating (DB 컬럼: {}, NULLS LAST 적용, 방향: DESC)", dbColumn);
+                //logger.debug("정렬 기준: rating (DB 컬럼: {}, NULLS LAST 적용, 방향: DESC)", dbColumn);
                 break;
             case "share":
                 dbColumn = "share_count";
-                logger.debug("정렬 기준: share (DB 컬럼: {}, 방향: DESC)", dbColumn);
+                //logger.debug("정렬 기준: share (DB 컬럼: {}, 방향: DESC)", dbColumn);
                 break;
             // case "review": // 리뷰 수 정렬은 아직 미구현
             //     logger.warn("리뷰 수 기준 정렬은 현재 지원되지 않습니다.");

@@ -217,11 +217,11 @@ public class StoreService {
 		// 1. 가게 정보 조회 (엔티티)
 		Page<Store> storePage;
 		if (lat != null && lng != null) {
-			logger.debug("위치 기반 가게 조회 수행: lat={}, lng={}, radius={}, ...", lat, lng, radius);
+			//logger.debug("위치 기반 가게 조회 수행: lat={}, lng={}, radius={}, ...", lat, lng, radius);
 			storePage = storeRepository.findStoresWithLocation(
 					categoryId, storeName, isDiscountOpen, lat, lng, radius, pageable);
 		} else {
-			logger.debug("위치 정보 없는 가게 조회 수행: ...");
+			//logger.debug("위치 정보 없는 가게 조회 수행: ...");
 			storePage = storeRepository.findStoresWithoutLocation(
 					categoryId, storeName, isDiscountOpen, pageable);
 		}
@@ -235,7 +235,7 @@ public class StoreService {
 
 			// 3. 리뷰 수 조회
 			List<Map<String, Object>> reviewCountsResult = reviewRepository.findReviewCountsByStoreIds(storeIds);
-			logger.debug("리뷰 수 조회 결과 ({}개 가게): {}", reviewCountsResult.size(), reviewCountsResult);
+			//logger.debug("리뷰 수 조회 결과 ({}개 가게): {}", reviewCountsResult.size(), reviewCountsResult);
 
 			// 4. 리뷰 수 Map 생성 (storeId -> reviewCount)
 			Map<Long, Long> reviewCountMap = reviewCountsResult.stream()
@@ -244,14 +244,14 @@ public class StoreService {
 						map -> (Long) map.get("reviewCount"),
 						(count1, count2) -> count1 // 중복 키 발생 시 처리 (이론상 발생 안 함)
 					)); 
-			logger.debug("생성된 리뷰 수 Map: {}", reviewCountMap);
+			//logger.debug("생성된 리뷰 수 Map: {}", reviewCountMap);
 
 			// 5. DTO 변환 및 리뷰 수 설정
 			content = stores.stream().map(store -> {
 				StoreListDto dto = StoreListDto.fromEntity(store);
 				long count = reviewCountMap.getOrDefault(store.getId(), 0L);
 				dto.setReviewCount(count);
-				logger.trace("Store ID: {}, Review Count: {}", store.getId(), count);
+				//logger.trace("Store ID: {}, Review Count: {}", store.getId(), count);
 				return dto;
 			}).collect(Collectors.toList());
 		} else {
@@ -263,7 +263,7 @@ public class StoreService {
 		
 		long endTime = System.currentTimeMillis(); // 쿼리 시간 측정 종료
 		long queryExecutionTimeMs = endTime - startTime;
-		logger.debug("가게 조회 쿼리 실행 시간 (리뷰 수 포함): {}ms", queryExecutionTimeMs);
+		//logger.debug("가게 조회 쿼리 실행 시간 (리뷰 수 포함): {}ms", queryExecutionTimeMs);
 
 		return new StoreQueryResult(content, totalElements, totalPages, queryExecutionTimeMs);
 	}
